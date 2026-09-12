@@ -1,4 +1,4 @@
-# Pydantic LLM Adapter
+# mkseo-ai
 
 Shared, typed Python configuration and PydanticAI provider loading for Love and
 Stride. Supports OMLX, LM Studio, Gemini, and OpenAI. Applications own prompts,
@@ -28,8 +28,8 @@ through the enum instead of supplying a file path:
 ```python
 from pydantic_ai import Agent
 
-from pydantic_llm_adapter.config import LlmPreset, load_config
-from pydantic_llm_adapter.model import load_model
+from mkseo_ai.config import LlmPreset, load_config
+from mkseo_ai.model import load_model
 
 config = load_config()  # Defaults to LlmPreset.OMLX.
 model = load_model(config.model, http_client=None)
@@ -46,8 +46,8 @@ lmstudio_config = load_config(LlmPreset.LMSTUDIO)
 
 All presets select server port 8787. OMLX uses `http://127.0.0.1:8000/v1`; LM
 Studio uses `http://127.0.0.1:1234/v1`. YAML resources live under
-`src/pydantic_llm_adapter/presets/` and ship in the wheel and source archive.
-There is no default symlink. Preset loading works from any working directory.
+`src/mkseo_ai/presets/` and ship in the wheel and source archive. There is no
+default symlink. Preset loading works from any working directory.
 
 Love and Stride commands accept `--config=lmstudio` (or another enum value),
 with OMLX selected when the option is omitted. All bundled presets use
@@ -85,7 +85,7 @@ Clone this repository beside `love` and `stride`. Each application's
 
 ```toml
 [tool.uv.sources]
-pydantic-llm-adapter = { path = "../../pydantic-llm-adapter", editable = true }
+mkseo-ai = { path = "../../mkseo-ai", editable = true }
 ```
 
 The package is also listed in each server's project dependencies. Run

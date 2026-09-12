@@ -1,7 +1,7 @@
 from typing import cast
 from unittest import TestCase
 
-from pydantic_llm_adapter.config import (
+from mkseo_ai.config import (
     LlmPreset,
     load_config,
 )

@@ -1,5 +1,5 @@
 [project]
-name = "pydantic-llm-adapter"
+name = "mkseo-ai"
 version = "0.1.0"
 description = "Shared YAML configuration and PydanticAI model adapters"
 readme = "README.md"

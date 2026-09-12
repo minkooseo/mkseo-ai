@@ -109,9 +109,7 @@ def load_config(preset: LlmPreset = LlmPreset.OMLX) -> ServerConfig:
     """Load a bundled configuration preset; default to OMLX."""
     if type(preset) is not LlmPreset:
         raise TypeError("preset must be a LlmPreset")
-    resource = files("pydantic_llm_adapter").joinpath(
-        "presets", _PRESET_FILES[preset]
-    )
+    resource = files("mkseo_ai").joinpath("presets", _PRESET_FILES[preset])
     try:
         raw_config = yaml.safe_load(resource.read_text(encoding="utf-8"))
     except OSError as exc:

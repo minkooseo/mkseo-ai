@@ -7,7 +7,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from pydantic_llm_adapter.config import ModelConfig
+from mkseo_ai.config import ModelConfig
 
 
 def load_model(

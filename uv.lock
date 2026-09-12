@@ -587,7 +587,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pydantic-llm-adapter"
+name = "mkseo-ai"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

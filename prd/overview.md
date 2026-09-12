@@ -1,9 +1,9 @@
-# Pydantic LLM Adapter
+# mkseo-ai
 
-Pydantic LLM Adapter is a shared Python library for configuring and selecting
-PydanticAI model providers. It gives applications one validated configuration
-boundary for local and hosted models, so each application can focus on its own
-conversation behavior.
+mkseo-ai is a shared Python library for configuring and selecting PydanticAI
+model providers. It gives applications one validated configuration boundary for
+local and hosted models, so each application can focus on its own conversation
+behavior.
 
 Love and Stride consume the library through editable local dependencies.
 Supported providers are OMLX, LM Studio, Gemini, and OpenAI. Shared bundled

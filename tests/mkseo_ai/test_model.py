@@ -8,12 +8,12 @@ from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from pydantic_llm_adapter.config import (
+from mkseo_ai.config import (
     ExternalServiceModelConfig,
     LmStudioModelConfig,
     OmlxModelConfig,
 )
-from pydantic_llm_adapter.model import load_model
+from mkseo_ai.model import load_model
 
 
 class ModelTestCase(IsolatedAsyncioTestCase):
