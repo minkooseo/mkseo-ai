@@ -1,0 +1,26 @@
+{
+  "name": "pydantic-llm-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Development tooling for a pure Python PydanticAI adapter",
+  "packageManager": "pnpm@11.23.0+sha512.f00082e5b283a199b74e079da28d155c008fe232f44c8a06ea7ddfa014ecf719fc362f790ecc67b28106ddac2afb24c49a9a079159da560b2ce7d1e98efd11af",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "check": "pnpm deps:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "deps:check": "pnpm install --frozen-lockfile --lockfile-only --ignore-scripts && uv lock --check",
+    "format": "pnpm exec prettier --write . && uv run --locked ruff format .",
+    "format:check": "pnpm exec prettier --check . && uv run --locked ruff format --check .",
+    "lint": "uv run --locked ruff check .",
+    "lint:fix": "uv run --locked ruff check --fix .",
+    "typecheck": "uv run --locked pyright",
+    "test": "uv run --locked pytest",
+    "build": "uv build --no-sources"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "prettier": "^3.9.5"
+  }
+}

@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+uv.lock
+.venv/
+dist/
+.pytest_cache/
+.ruff_cache/

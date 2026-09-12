@@ -1,0 +1,45 @@
+# pnpm development tooling
+node_modules/
+.pnpm-store/
+pnpm-debug.log*
+
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.uv-cache/
+
+# Python build output
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+coverage/
+
+# Local environment and credentials
+.env
+.envrc
+.env.local
+.env.*.local
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test data
+test-data/
