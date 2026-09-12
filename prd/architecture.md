@@ -5,20 +5,33 @@ selection for Love and Stride. It has no FastAPI dependency and does not own
 chat prompts, conversation state, HTTP routes, or application startup.
 
 ```text
-YAML + environment -> configuration -> PydanticAI model -> caller's agent
-Caller-owned HTTP client -------------------^
+Bundled preset -> configuration -> PydanticAI model
+Provider environment + caller-owned HTTP client --^
+Caller-owned agent consumes the configured model
 ```
 
 ## Package boundaries
 
 `src/pydantic_llm_adapter/config.py` defines immutable configuration models and
-loads YAML settings with environment credentials. It includes application mode
-and listen port so consumers share one configuration contract.
+loads a selected `LlmPreset` into one `ServerConfig` with provider-specific
+`ModelConfig` settings. `load_config()` defaults to `LlmPreset.OMLX`; callers
+cannot supply arbitrary file paths. Configuration contains model selection,
+application mode, and listen port; it does not load credentials. Every model
+requires a base URL and exposes its compatible API as a read-only string:
+`google` for Gemini, `openai` for the other providers.
+
+`src/pydantic_llm_adapter/presets/` bundles the YAML resources selected through
+`LlmPreset`: `server-dev-omlx.yaml`, `server-dev-lmstudio.yaml`,
+`server-dev-gemini.yaml`. All bundled presets use development mode. Package
+resource loading makes preset selection independent of the caller's working
+directory.
 
 `src/pydantic_llm_adapter/model.py` constructs the configured PydanticAI adapter
-without sending a model request. Callers explicitly supply an HTTP client or
-absence of one. A supplied client is used for local and hosted providers; its
-lifecycle belongs to the caller.
+without sending a model request. It selects `GoogleModel` or `OpenAIChatModel`
+from the compatible API and passes the configured base URL directly to the
+provider. Provider SDKs resolve credentials. Callers explicitly supply an HTTP
+client or absence of one. A supplied client is used for local and hosted
+providers; its lifecycle belongs to the caller.
 
 `src/pydantic_llm_adapter/py.typed` exposes package typing to consumers.
 Provider rules and configuration constraints belong in
@@ -28,7 +41,8 @@ Provider rules and configuration constraints belong in
 
 Love and Stride consume this package through editable uv dependencies from their
 server projects. Application code owns agent instructions, message history,
-request deadlines, and client lifecycle.
+request deadlines, and client lifecycle. Both applications select a bundled
+preset through their CLI and default to OMLX.
 
 The package targets Python 3.14 and uses the uv build backend. Tests mirror the
 package beneath `tests/pydantic_llm_adapter/`. The `pnpm check` gate covers

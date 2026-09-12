@@ -6,8 +6,9 @@ boundary for local and hosted models, so each application can focus on its own
 conversation behavior.
 
 Love and Stride consume the library through editable local dependencies.
-Supported providers are OMLX, LM Studio, Gemini, and OpenAI. Non-secret settings
-come from YAML; credentials come from the environment.
+Supported providers are OMLX, LM Studio, Gemini, and OpenAI. Shared bundled
+presets supply non-secret settings, with OMLX selected by default. Provider SDKs
+obtain credentials from the environment when needed.
 
 The library supplies model adapters. Applications own agents, instructions,
 conversation history, network endpoints, and any HTTP client they provide.

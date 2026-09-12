@@ -1,0 +1,6 @@
+mode: dev
+port: 8787
+model:
+  provider: omlx
+  name: Jundot--gemma-4-E4B-it-oQ4e-mtp
+  base_url: http://127.0.0.1:8000/v1

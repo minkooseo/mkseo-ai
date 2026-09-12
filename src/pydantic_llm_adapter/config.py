@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
+from enum import StrEnum, auto
+from importlib.resources import files
 from typing import Annotated, Literal
 
 import yaml
@@ -18,8 +18,21 @@ NonBlankString = Annotated[
 ServerPort = Annotated[int, Field(ge=1, le=65535)]
 
 
-class HostedModelConfig(BaseModel):
-    """Gemini or OpenAI model selection."""
+class LlmPreset(StrEnum):
+    """Bundled server and model configuration choices."""
+
+    OMLX = auto()
+    """Development OMLX preset, selected by default."""
+
+    LMSTUDIO = auto()
+    """Development LM Studio preset."""
+
+    GEMINI = auto()
+    """Development Gemini preset."""
+
+
+class ExternalServiceModelConfig(BaseModel):
+    """Model selection for an external service such as Gemini or OpenAI."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -29,8 +42,18 @@ class HostedModelConfig(BaseModel):
     name: NonBlankString
     """Provider model name, for example `gemini-2.5-flash`."""
 
+    base_url: NonBlankString
+    """Service API root, for example `https://api.openai.com/v1`."""
 
-class OpenAICompatibleFileModelConfig(BaseModel):
+    @property
+    def compatible_api(self) -> Literal["google", "openai"]:
+        """Underlying API: Google for Gemini, OpenAI for OpenAI."""
+        if self.provider == "gemini":
+            return "google"
+        return "openai"
+
+
+class OpenAICompatibleModelConfig(BaseModel):
     """Shared non-secret settings for local OpenAI-compatible servers."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -41,62 +64,34 @@ class OpenAICompatibleFileModelConfig(BaseModel):
     base_url: NonBlankString
     """OpenAI-compatible API root, for example `http://localhost:1234/v1`."""
 
+    @property
+    def compatible_api(self) -> Literal["openai"]:
+        """Local servers use the OpenAI-compatible API."""
+        return "openai"
 
-class LmStudioFileModelConfig(OpenAICompatibleFileModelConfig):
-    """Non-secret LM Studio settings loaded from YAML."""
+
+class LmStudioModelConfig(OpenAICompatibleModelConfig):
+    """Model selection for a local LM Studio server."""
 
     provider: Literal["lmstudio"]
     """Local model provider, always `lmstudio`."""
 
 
-class LmStudioModelConfig(LmStudioFileModelConfig):
-    """Resolved LM Studio settings with its environment-only credential."""
-
-    api_key: NonBlankString | None
-    """Optional bearer token supplied through `MODEL_API_KEY`."""
-
-
-class OmlxFileModelConfig(OpenAICompatibleFileModelConfig):
-    """Non-secret OMLX settings loaded from YAML."""
+class OmlxModelConfig(OpenAICompatibleModelConfig):
+    """Model selection for a local OMLX server."""
 
     provider: Literal["omlx"]
     """Local model provider, always `omlx`."""
 
 
-class OmlxModelConfig(OmlxFileModelConfig):
-    """Resolved OMLX settings with its environment-only credential."""
-
-    api_key: NonBlankString | None
-    """Optional bearer token supplied through `OMLX_API_KEY`."""
-
-
-type FileModelConfig = Annotated[
-    LmStudioFileModelConfig | OmlxFileModelConfig | HostedModelConfig,
-    Field(discriminator="provider"),
-]
 type ModelConfig = Annotated[
-    LmStudioModelConfig | OmlxModelConfig | HostedModelConfig,
+    LmStudioModelConfig | OmlxModelConfig | ExternalServiceModelConfig,
     Field(discriminator="provider"),
 ]
-
-
-class ServerFileConfig(BaseModel):
-    """Non-secret server settings read from one YAML file."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    mode: Mode
-    """Runtime mode, for example `dev`."""
-
-    port: ServerPort
-    """HTTP listen port, for example `8787`."""
-
-    model: FileModelConfig
-    """Provider-specific model settings without credentials."""
 
 
 class ServerConfig(BaseModel):
-    """Resolved HTTP and language model configuration."""
+    """HTTP and language model settings from a bundled preset."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -107,40 +102,32 @@ class ServerConfig(BaseModel):
     """HTTP listen port, for example `8787`."""
 
     model: ModelConfig
-    """Provider-specific model settings with environment credentials."""
+    """Model selection, for example the local OMLX development model."""
 
 
-def load_config(path: Path) -> ServerConfig:
-    """Load YAML settings and environment credentials."""
+def load_config(preset: LlmPreset = LlmPreset.OMLX) -> ServerConfig:
+    """Load a bundled configuration preset; default to OMLX."""
+    if type(preset) is not LlmPreset:
+        raise TypeError("preset must be a LlmPreset")
+    resource = files("pydantic_llm_adapter").joinpath(
+        "presets", _PRESET_FILES[preset]
+    )
     try:
-        raw_config = yaml.safe_load(path.read_text(encoding="utf-8"))
+        raw_config = yaml.safe_load(resource.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise ValueError(f"could not read server config {path}: {exc}") from exc
+        raise ValueError(
+            f"could not read config preset {preset}: {exc}"
+        ) from exc
     except yaml.YAMLError as exc:
         raise ValueError(
-            f"invalid YAML in server config {path}: {exc}"
+            f"invalid YAML in config preset {preset}: {exc}"
         ) from exc
 
-    file_config = ServerFileConfig.model_validate(raw_config)
-    if isinstance(file_config.model, LmStudioFileModelConfig):
-        model: ModelConfig = LmStudioModelConfig(
-            provider=file_config.model.provider,
-            name=file_config.model.name,
-            base_url=file_config.model.base_url,
-            api_key=os.environ.get("MODEL_API_KEY"),
-        )
-    elif isinstance(file_config.model, OmlxFileModelConfig):
-        model = OmlxModelConfig(
-            provider=file_config.model.provider,
-            name=file_config.model.name,
-            base_url=file_config.model.base_url,
-            api_key=os.environ.get("OMLX_API_KEY"),
-        )
-    else:
-        model = file_config.model
+    return ServerConfig.model_validate(raw_config)
 
-    return ServerConfig(
-        mode=file_config.mode,
-        port=file_config.port,
-        model=model,
-    )
+
+_PRESET_FILES = {
+    LlmPreset.OMLX: "server-dev-omlx.yaml",
+    LlmPreset.LMSTUDIO: "server-dev-lmstudio.yaml",
+    LlmPreset.GEMINI: "server-dev-gemini.yaml",
+}

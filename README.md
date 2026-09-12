@@ -22,43 +22,59 @@ metadata/docs and Ruff to Python. Individual `lint`, `typecheck`, `test`, and
 
 ## Configuration and use
 
-Keep non-secret YAML settings in each application:
-
-```yaml
-mode: dev
-port: 8787
-model:
-  provider: omlx
-  name: Jundot--gemma-4-E4B-it-oQ4e-mtp
-  base_url: http://127.0.0.1:8000/v1
-```
+The package bundles the shared, non-secret YAML presets. Applications select one
+through the enum instead of supplying a file path:
 
 ```python
-from pathlib import Path
-
 from pydantic_ai import Agent
 
-from pydantic_llm_adapter.config import load_config
+from pydantic_llm_adapter.config import LlmPreset, load_config
 from pydantic_llm_adapter.model import load_model
 
-config = load_config(Path("server-dev.yaml"))
+config = load_config()  # Defaults to LlmPreset.OMLX.
 model = load_model(config.model, http_client=None)
 agent = Agent(model, instructions="Answer clearly and concisely.")
+
+lmstudio_config = load_config(LlmPreset.LMSTUDIO)
 ```
+
+| Enum member          | CLI value  | Mode | Model                             |
+| -------------------- | ---------- | ---- | --------------------------------- |
+| `LlmPreset.OMLX`     | `omlx`     | dev  | `Jundot--gemma-4-E4B-it-oQ4e-mtp` |
+| `LlmPreset.LMSTUDIO` | `lmstudio` | dev  | `google/gemma-4-e4b`              |
+| `LlmPreset.GEMINI`   | `gemini`   | dev  | `gemini-3.5-flash-lite`           |
+
+All presets select server port 8787. OMLX uses `http://127.0.0.1:8000/v1`; LM
+Studio uses `http://127.0.0.1:1234/v1`. YAML resources live under
+`src/pydantic_llm_adapter/presets/` and ship in the wheel and source archive.
+There is no default symlink. Preset loading works from any working directory.
+
+Love and Stride commands accept `--config=lmstudio` (or another enum value),
+with OMLX selected when the option is omitted. All bundled presets use
+development mode. Edit the bundled presets to change model settings. The model
+loader also supports explicit OpenAI configuration; no OpenAI preset is bundled.
 
 Run the agent inside its async context manager so provider-owned HTTP clients
 close on exit. Callers with their own `httpx.AsyncClient` pass it explicitly as
 `http_client` and own its cleanup; this supports request/response hooks. Loading
 configuration or a model does not send a model request.
 
-Each model needs `provider` and `name`. Only local providers accept the required
-`base_url`. Unknown fields, credentials in YAML, and mismatched provider
-settings fail validation without provider fallback.
+Python config types expose a read-only `compatible_api`: `google` for Gemini and
+`openai` for OpenAI, LM Studio, and OMLX. This protocol choice is fixed in
+Python and is not a YAML setting. The loader selects the adapter by protocol and
+endpoint instead of concrete config types.
 
-Credentials come from the environment:
+Each model needs `provider`, `name`, and a nonempty `base_url`. Unknown fields,
+credentials in YAML, and mismatched provider settings fail validation without
+provider fallback.
 
-- OMLX: optional `OMLX_API_KEY`.
-- LM Studio: optional `MODEL_API_KEY`.
+Local OMLX and LM Studio servers run without API-key authentication. Their
+configs contain no credentials. The provider SDKs handle credentials; the
+OpenAI-compatible client uses `OPENAI_API_KEY` when present and a dummy key
+otherwise.
+
+External-service credentials come from the environment:
+
 - Gemini: `GOOGLE_API_KEY` (the Google SDK also accepts `GEMINI_API_KEY`).
 - OpenAI: `OPENAI_API_KEY`.
 

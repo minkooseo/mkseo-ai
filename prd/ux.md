@@ -2,13 +2,20 @@
 
 ## Integration flow
 
-A consuming application supplies a YAML configuration and loads validated
-settings. It selects a PydanticAI model adapter from those settings and uses
-that adapter in its own agent. Model selection does not send a model request.
+A consuming application selects a shared preset and receives validated settings.
+OMLX is the default when no preset is selected. It selects a PydanticAI model
+adapter from those settings and uses that adapter in its own agent. Model
+selection does not send a model request.
 
-Developers choose a provider and model explicitly. Local providers also need an
-API address. Credentials stay in the process environment rather than the
-configuration file. [Providers](providers.md) owns the configuration rules.
+The preset choices cover OMLX, LM Studio, and Gemini for development.
+Applications expose the same optional preset selector at startup. The library
+owns the bundled YAML settings; consumers select a preset rather than supplying
+a configuration file path.
+
+Settings contain no API keys. Provider SDKs obtain credentials from the process
+environment, including for local endpoints when configured. Each model has an
+API address, and its provider determines which compatible API is used.
+[Providers](providers.md) owns the preset contents and configuration rules.
 
 The application explicitly supplies either its own asynchronous HTTP client or
 no client. A supplied client remains the application's responsibility to manage

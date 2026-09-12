@@ -7,24 +7,31 @@ consuming application.
 
 ## Configuration
 
+The library owns development presets for OMLX, LM Studio, and Gemini. OMLX is
+the default. Consumers choose a typed preset rather than a configuration file
+path. Invalid selections are rejected. OpenAI remains supported by the model
+adapter but has no bundled preset. Explicit configuration supports development
+or production mode; there is no bundled production preset.
+
 Configuration requires a development or production mode, a listen port from 1
 through 65,535, and a provider-specific model selection. Unknown fields and
-unsupported providers are rejected. Model names and local API roots must be
+unsupported providers are rejected. Model names and all API roots must be
 nonempty after trimming surrounding whitespace.
 
-LM Studio and OMLX require a model name and an OpenAI-compatible API root.
-Gemini and OpenAI require a model name and use their hosted provider connection.
-Missing files, malformed YAML, and invalid settings fail with an error instead
-of silently choosing replacement settings.
+Every provider requires a model name and an explicit API root. Gemini uses the
+Google API; LM Studio, OMLX, and OpenAI use the OpenAI-compatible API. The
+configured API root is used directly for the selected provider connection.
+Missing bundled resources, malformed YAML, and invalid settings fail with an
+error instead of silently choosing replacement settings. Presets are available
+from the installed package regardless of the application working directory.
 
 ## Credentials and transport
 
-Credentials come from the environment rather than YAML. LM Studio accepts an
-optional bearer token from `MODEL_API_KEY`; OMLX accepts one from
-`OMLX_API_KEY`. Gemini uses `GOOGLE_API_KEY`, with `GEMINI_API_KEY` as a
-fallback when the preferred key is absent or empty. OpenAI uses
-`OPENAI_API_KEY`. An explicitly supplied local token must be nonempty after
-trimming whitespace.
+Configuration has no API key fields. Provider SDKs resolve credentials from the
+environment. Gemini uses `GOOGLE_API_KEY`, with `GEMINI_API_KEY` as a fallback
+when the preferred key is absent or empty. OpenAI-compatible connections,
+including LM Studio and OMLX, use `OPENAI_API_KEY` when set. With that key
+absent, the OpenAI-compatible provider supplies a placeholder token.
 
 Consumers may supply an HTTP client to control transport for any provider. They
 retain responsibility for its lifetime. Credential selection is the same whether

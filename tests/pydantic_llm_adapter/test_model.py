@@ -6,10 +6,10 @@ from unittest.mock import patch
 from httpx import AsyncClient, MockTransport, Request, Response
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
-from pydantic_ai.models.openai import OpenAIResponsesModel
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from pydantic_llm_adapter.config import (
-    HostedModelConfig,
+    ExternalServiceModelConfig,
     LmStudioModelConfig,
     OmlxModelConfig,
 )
@@ -17,6 +17,14 @@ from pydantic_llm_adapter.model import load_model
 
 
 class ModelTestCase(IsolatedAsyncioTestCase):
+    @patch.dict(
+        os.environ,
+        {
+            "MODEL_API_KEY": "lmstudio-test-key",
+            "OMLX_API_KEY": "omlx-test-key",
+        },
+        clear=True,
+    )
     async def test_load_model__local_provider_uses_configured_transport(self):
         requests: list[Request] = []
         for config in [
@@ -24,13 +32,11 @@ class ModelTestCase(IsolatedAsyncioTestCase):
                 provider="omlx",
                 name="omlx-test-model",
                 base_url="http://omlx.test/v1",
-                api_key="omlx-test-key",
             ),
             LmStudioModelConfig(
                 provider="lmstudio",
                 name="lmstudio-test-model",
                 base_url="http://lmstudio.test/v1",
-                api_key="lmstudio-test-key",
             ),
         ]:
             with self.subTest(provider=config.provider):
@@ -73,7 +79,7 @@ class ModelTestCase(IsolatedAsyncioTestCase):
                     str(requests[0].url),
                 )
                 self.assertEqual(
-                    "Bearer " + str(config.api_key),
+                    "Bearer api-key-not-set",
                     requests[0].headers["authorization"],
                 )
                 self.assertEqual(
@@ -90,12 +96,20 @@ class ModelTestCase(IsolatedAsyncioTestCase):
         ):
             for config, model_type in [
                 (
-                    HostedModelConfig(provider="gemini", name="gemini-test"),
+                    ExternalServiceModelConfig(
+                        provider="gemini",
+                        name="gemini-test",
+                        base_url="https://generativelanguage.googleapis.com",
+                    ),
                     GoogleModel,
                 ),
                 (
-                    HostedModelConfig(provider="openai", name="gpt-test"),
-                    OpenAIResponsesModel,
+                    ExternalServiceModelConfig(
+                        provider="openai",
+                        name="gpt-test",
+                        base_url="https://api.openai.com/v1",
+                    ),
+                    OpenAIChatModel,
                 ),
             ]:
                 with self.subTest(provider=config.provider):
@@ -104,21 +118,48 @@ class ModelTestCase(IsolatedAsyncioTestCase):
                     async with model:
                         pass
 
-    async def test_load_model__gemini_custom_client_uses_standard_key(self):
-        def unexpected_request(request: Request) -> Response:
-            self.fail("Loading a model must not send a request")
+    async def test_load_model__gemini_uses_configured_endpoint_and_client(self):
+        requests: list[Request] = []
+
+        def respond(request: Request) -> Response:
+            requests.append(request)
+            return Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {
+                                "role": "model",
+                                "parts": [{"text": "Google answer"}],
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ]
+                },
+            )
 
         with patch.dict(
             os.environ, {"GOOGLE_API_KEY": "google-test-key"}, clear=True
         ):
-            async with AsyncClient(
-                transport=MockTransport(unexpected_request)
-            ) as client:
+            async with AsyncClient(transport=MockTransport(respond)) as client:
                 model = load_model(
-                    HostedModelConfig(provider="gemini", name="gemini-test"),
+                    ExternalServiceModelConfig(
+                        provider="gemini",
+                        name="gemini-test",
+                        base_url="https://google.test",
+                    ),
                     http_client=client,
                 )
-                self.assertIsInstance(model, GoogleModel)
-                async with model:
-                    pass
+                self.assertEqual([], requests)
+                async with Agent(model) as agent:
+                    result = await agent.run("Hello")
+                self.assertEqual("Google answer", result.output)
                 self.assertFalse(client.is_closed)
+        self.assertEqual(1, len(requests))
+        self.assertEqual(
+            "https://google.test/v1beta/models/gemini-test:generateContent",
+            str(requests[0].url),
+        )
+        self.assertEqual(
+            "google-test-key", requests[0].headers["x-goog-api-key"]
+        )
