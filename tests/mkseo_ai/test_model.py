@@ -3,7 +3,7 @@ import os
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from httpx import AsyncClient, MockTransport, Request, Response
+from httpx2 import AsyncClient, MockTransport, Request, Response
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
