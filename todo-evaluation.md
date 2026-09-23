@@ -150,6 +150,18 @@ immutable, so callers cannot append directly to a leaf and bypass the suite's
 ownership checks. The method revalidates the complete tree and preserves the
 previous snapshot. Loading a saved suite runs the same ownership validation.
 
+### TODO: `append_run` drops output types
+
+`append_run` dumps the whole suite to a dict and revalidates it. On an
+unparameterized `EvaluationSuite`, `Output` is `Any`, so a `BaseModel` output
+comes back as a plain `dict` with no error; `EvaluationSuite[Out]` keeps it. It
+also re-serializes and revalidates every earlier run on each append.
+
+Replace the round trip by rebuilding only the path to the matching case with
+`model_copy(update=...)`, then constructing `type(self)(id=..., axes=...)` so
+`_ownership_is_unique` still runs. Add a test that appends a run with a
+`BaseModel` output to an unparameterized suite and checks the output's type.
+
 Derive counts from `evaluation_runs`: total attempts are the sequence length;
 succeeded and failed attempts are counts of their respective statuses. A
 measurement sums its cases, and an axis sums its measurements. Ownership is
