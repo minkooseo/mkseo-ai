@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
-from importlib.resources import files
 from typing import Annotated, Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 Mode = Literal["dev", "prod"]
@@ -28,7 +26,10 @@ class LlmPreset(StrEnum):
     """Development LM Studio preset."""
 
     GEMINI = auto()
-    """Development Gemini preset."""
+    """Development Gemini 3.5 Flash-Lite preset."""
+
+    GEMINI_FLASH_3_8 = auto()
+    """Development Gemini 3.8 Flash preset."""
 
 
 class ExternalServiceModelConfig(BaseModel):
@@ -105,27 +106,86 @@ class ServerConfig(BaseModel):
     """Model selection, for example the local OMLX development model."""
 
 
+class ModelChoice(BaseModel):
+    """A displayable model choice backed by a bundled preset."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: str
+    """Short choice ID, for example `flash-lite`."""
+
+    label: str
+    """Display name, for example `Gemini 3.5 Flash-Lite`."""
+
+    preset: LlmPreset
+    """Configuration choice, for example `LlmPreset.GEMINI`."""
+
+
+class ProviderChoice(BaseModel):
+    """A provider and the bundled models available to select."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: Literal["omlx", "lmstudio", "gemini"]
+    """Short provider ID, for example `lmstudio`."""
+
+    label: str
+    """Display name, for example `LM Studio`."""
+
+    models: tuple[ModelChoice, ...]
+    """Available model choices, for example the two Gemini models."""
+
+
+def list_provider_models() -> tuple[ProviderChoice, ...]:
+    """List bundled provider and model choices for a selection interface."""
+    return _PROVIDER_CHOICES
+
+
 def load_config(preset: LlmPreset = LlmPreset.OMLX) -> ServerConfig:
     """Load a bundled configuration preset; default to OMLX."""
     if type(preset) is not LlmPreset:
         raise TypeError("preset must be a LlmPreset")
-    resource = files("mkseo_ai").joinpath("presets", _PRESET_FILES[preset])
-    try:
-        raw_config = yaml.safe_load(resource.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ValueError(
-            f"could not read config preset {preset}: {exc}"
-        ) from exc
-    except yaml.YAMLError as exc:
-        raise ValueError(
-            f"invalid YAML in config preset {preset}: {exc}"
-        ) from exc
+    from mkseo_ai.presets.gemini import flash_3_8, flash_lite
+    from mkseo_ai.presets.lmstudio import load as load_lmstudio
+    from mkseo_ai.presets.omlx import load as load_omlx
 
-    return ServerConfig.model_validate(raw_config)
+    return {
+        LlmPreset.OMLX: load_omlx,
+        LlmPreset.LMSTUDIO: load_lmstudio,
+        LlmPreset.GEMINI: flash_lite,
+        LlmPreset.GEMINI_FLASH_3_8: flash_3_8,
+    }[preset]()
 
 
-_PRESET_FILES = {
-    LlmPreset.OMLX: "server-dev-omlx.yaml",
-    LlmPreset.LMSTUDIO: "server-dev-lmstudio.yaml",
-    LlmPreset.GEMINI: "server-dev-gemini.yaml",
-}
+_PROVIDER_CHOICES = (
+    ProviderChoice(
+        id="omlx",
+        label="oMLX",
+        models=(
+            ModelChoice(id="gemma-4", label="Gemma 4", preset=LlmPreset.OMLX),
+        ),
+    ),
+    ProviderChoice(
+        id="lmstudio",
+        label="LM Studio",
+        models=(
+            ModelChoice(
+                id="gemma-4", label="Gemma 4", preset=LlmPreset.LMSTUDIO
+            ),
+        ),
+    ),
+    ProviderChoice(
+        id="gemini",
+        label="Gemini",
+        models=(
+            ModelChoice(
+                id="flash-lite", label="Flash Lite", preset=LlmPreset.GEMINI
+            ),
+            ModelChoice(
+                id="flash-3.8",
+                label="Flash 3.8",
+                preset=LlmPreset.GEMINI_FLASH_3_8,
+            ),
+        ),
+    ),
+)

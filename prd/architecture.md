@@ -12,18 +12,19 @@ Caller-owned agent consumes the configured model
 
 ## Package boundaries
 
-`src/mkseo_ai/config.py` defines immutable configuration models and loads a
-selected `LlmPreset` into one `ServerConfig` with provider-specific
-`ModelConfig` settings. `load_config()` defaults to `LlmPreset.OMLX`; callers
-cannot supply arbitrary file paths. Configuration contains model selection,
-application mode, and listen port; it does not load credentials. Every model
-requires a base URL and exposes its compatible API as a read-only string:
-`google` for Gemini, `openai` for the other providers.
+`src/mkseo_ai/config.py` defines immutable configuration and choice models. It
+lists bundled provider and model choices, then loads a selected `LlmPreset` into
+one `ServerConfig` with provider-specific `ModelConfig` settings.
+`load_config()` defaults to `LlmPreset.OMLX`; callers cannot supply arbitrary
+file paths. Configuration contains model selection, application mode, and listen
+port; it does not load credentials. Every model requires a base URL and exposes
+its compatible API as a read-only string: `google` for Gemini, `openai` for the
+other providers.
 
-`src/mkseo_ai/presets/` bundles the YAML resources selected through `LlmPreset`:
-`server-dev-omlx.yaml`, `server-dev-lmstudio.yaml`, `server-dev-gemini.yaml`.
-All bundled presets use development mode. Package resource loading makes preset
-selection independent of the caller's working directory.
+`src/mkseo_ai/presets/` contains Python configurations for oMLX, LM Studio, and
+the two Gemini model choices. All bundled presets use development mode. Their
+Python modules ship with the package and work independently of the caller's
+working directory.
 
 `src/mkseo_ai/model.py` constructs the configured PydanticAI adapter without
 sending a model request. It selects `GoogleModel` or `OpenAIChatModel` from the

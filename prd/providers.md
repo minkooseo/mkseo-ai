@@ -7,11 +7,14 @@ consuming application.
 
 ## Configuration
 
-The library owns development presets for OMLX, LM Studio, and Gemini. OMLX is
-the default. Consumers choose a typed preset rather than a configuration file
-path. Invalid selections are rejected. OpenAI remains supported by the model
-adapter but has no bundled preset. Explicit configuration supports development
-or production mode; there is no bundled production preset.
+The library owns development choices for oMLX, LM Studio, and Gemini. oMLX and
+LM Studio each offer only Gemma 4. Gemini offers only Flash Lite and Flash 3.8.
+Each choice has a readable label and resolves to one configured model name, so
+applications can present provider and model lists without making users enter
+model IDs or enum values. oMLX is the default. Invalid selections are rejected.
+OpenAI remains supported by the model adapter but has no bundled choice.
+Explicit configuration supports development or production mode; there is no
+bundled production preset.
 
 Configuration requires a development or production mode, a listen port from 1
 through 65,535, and a provider-specific model selection. Unknown fields and
@@ -21,9 +24,9 @@ nonempty after trimming surrounding whitespace.
 Every provider requires a model name and an explicit API root. Gemini uses the
 Google API; LM Studio, OMLX, and OpenAI use the OpenAI-compatible API. The
 configured API root is used directly for the selected provider connection.
-Missing bundled resources, malformed YAML, and invalid settings fail with an
-error instead of silently choosing replacement settings. Presets are available
-from the installed package regardless of the application working directory.
+Invalid settings fail with an error instead of silently choosing replacement
+settings. Presets are available from the installed package regardless of the
+application working directory.
 
 ## Credentials and transport
 

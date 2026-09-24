@@ -3,6 +3,7 @@ from unittest import TestCase
 
 from mkseo_ai.config import (
     LlmPreset,
+    list_provider_models,
     load_config,
 )
 
@@ -47,6 +48,66 @@ class ConfigTestCase(TestCase):
                 },
             },
             load_config(LlmPreset.GEMINI).model_dump(),
+        )
+        self.assertEqual(
+            {
+                "mode": "dev",
+                "port": 8787,
+                "model": {
+                    "provider": "gemini",
+                    "name": "gemini-3.8-flash",
+                    "base_url": "https://generativelanguage.googleapis.com",
+                },
+            },
+            load_config(LlmPreset.GEMINI_FLASH_3_8).model_dump(),
+        )
+
+    def test_list_provider_models__contains_only_supported_choices(self):
+        self.assertEqual(
+            [
+                {
+                    "id": "omlx",
+                    "label": "oMLX",
+                    "models": [
+                        {
+                            "id": "gemma-4",
+                            "label": "Gemma 4",
+                            "preset": "omlx",
+                        }
+                    ],
+                },
+                {
+                    "id": "lmstudio",
+                    "label": "LM Studio",
+                    "models": [
+                        {
+                            "id": "gemma-4",
+                            "label": "Gemma 4",
+                            "preset": "lmstudio",
+                        }
+                    ],
+                },
+                {
+                    "id": "gemini",
+                    "label": "Gemini",
+                    "models": [
+                        {
+                            "id": "flash-lite",
+                            "label": "Flash Lite",
+                            "preset": "gemini",
+                        },
+                        {
+                            "id": "flash-3.8",
+                            "label": "Flash 3.8",
+                            "preset": "gemini_flash_3_8",
+                        },
+                    ],
+                },
+            ],
+            [
+                choice.model_dump(mode="json")
+                for choice in list_provider_models()
+            ],
         )
 
     def test_load_config__rejects_untyped_preset(self):

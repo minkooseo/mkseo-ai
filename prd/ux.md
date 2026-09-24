@@ -7,10 +7,10 @@ OMLX is the default when no preset is selected. It selects a PydanticAI model
 adapter from those settings and uses that adapter in its own agent. Model
 selection does not send a model request.
 
-The preset choices cover OMLX, LM Studio, and Gemini for development.
-Applications expose the same optional preset selector at startup. The library
-owns the bundled YAML settings; consumers select a preset rather than supplying
-a configuration file path.
+Applications can display grouped providers and readable model choices at
+startup. The library owns the bundled Python settings; consumers select a choice
+rather than supplying a configuration file path or model ID. See
+[Providers](providers.md) for the available choices.
 
 Settings contain no API keys. Provider SDKs obtain credentials from the process
 environment, including for local endpoints when configured. Each model has an
@@ -21,9 +21,9 @@ The application explicitly supplies either its own asynchronous HTTP client or
 no client. A supplied client remains the application's responsibility to manage
 and close.
 
-Unreadable or malformed configuration, invalid settings, and provider setup
-failures surface as errors to the caller. The library does not choose a fallback
-provider or turn failures into chat replies.
+Invalid settings and provider setup failures surface as errors to the caller.
+The library does not choose a fallback provider or turn failures into chat
+replies.
 
 ## Development workflow
 

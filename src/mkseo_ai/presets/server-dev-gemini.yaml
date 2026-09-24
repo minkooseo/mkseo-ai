@@ -1,6 +1,0 @@
-mode: dev
-port: 8787
-model:
-  provider: gemini
-  name: gemini-3.5-flash-lite
-  base_url: https://generativelanguage.googleapis.com
