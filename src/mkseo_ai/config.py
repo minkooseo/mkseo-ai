@@ -25,10 +25,10 @@ class LlmPreset(StrEnum):
     LMSTUDIO = auto()
     """Development LM Studio preset."""
 
-    GEMINI = auto()
+    GEMINI_LITE = auto()
     """Development Gemini 3.5 Flash-Lite preset."""
 
-    GEMINI_FLASH_3_8 = auto()
+    GEMINI_FLASH = auto()
     """Development Gemini 3.8 Flash preset."""
 
 
@@ -118,7 +118,7 @@ class ModelChoice(BaseModel):
     """Display name, for example `Gemini 3.5 Flash-Lite`."""
 
     preset: LlmPreset
-    """Configuration choice, for example `LlmPreset.GEMINI`."""
+    """Configuration choice, for example `LlmPreset.GEMINI_LITE`."""
 
 
 class ProviderChoice(BaseModel):
@@ -152,8 +152,8 @@ def load_config(preset: LlmPreset = LlmPreset.OMLX) -> ServerConfig:
     return {
         LlmPreset.OMLX: load_omlx,
         LlmPreset.LMSTUDIO: load_lmstudio,
-        LlmPreset.GEMINI: flash_lite,
-        LlmPreset.GEMINI_FLASH_3_8: flash_3_8,
+        LlmPreset.GEMINI_LITE: flash_lite,
+        LlmPreset.GEMINI_FLASH: flash_3_8,
     }[preset]()
 
 
@@ -179,12 +179,14 @@ _PROVIDER_CHOICES = (
         label="Gemini",
         models=(
             ModelChoice(
-                id="flash-lite", label="Flash Lite", preset=LlmPreset.GEMINI
+                id="flash-lite",
+                label="Flash Lite",
+                preset=LlmPreset.GEMINI_LITE,
             ),
             ModelChoice(
                 id="flash-3.8",
                 label="Flash 3.8",
-                preset=LlmPreset.GEMINI_FLASH_3_8,
+                preset=LlmPreset.GEMINI_FLASH,
             ),
         ),
     ),

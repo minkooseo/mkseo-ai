@@ -38,12 +38,12 @@ model = load_model(config.model, http_client=None)
 agent = Agent(model, instructions="Answer clearly and concisely.")
 ```
 
-| Provider  | Displayed model | Preset CLI value   |
-| --------- | --------------- | ------------------ |
-| oMLX      | Gemma 4         | `omlx`             |
-| LM Studio | Gemma 4         | `lmstudio`         |
-| Gemini    | Flash Lite      | `gemini`           |
-| Gemini    | Flash 3.8       | `gemini_flash_3_8` |
+| Provider  | Displayed model | Preset CLI value |
+| --------- | --------------- | ---------------- |
+| oMLX      | Gemma 4         | `omlx`           |
+| LM Studio | Gemma 4         | `lmstudio`       |
+| Gemini    | Flash Lite      | `gemini_lite`    |
+| Gemini    | Flash 3.8       | `gemini_flash`   |
 
 All presets select development mode and server port 8787. oMLX uses
 `http://127.0.0.1:8000/v1`; LM Studio uses `http://127.0.0.1:1234/v1`. Their

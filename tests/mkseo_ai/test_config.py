@@ -47,7 +47,7 @@ class ConfigTestCase(TestCase):
                     "base_url": "https://generativelanguage.googleapis.com",
                 },
             },
-            load_config(LlmPreset.GEMINI).model_dump(),
+            load_config(LlmPreset.GEMINI_LITE).model_dump(),
         )
         self.assertEqual(
             {
@@ -59,7 +59,7 @@ class ConfigTestCase(TestCase):
                     "base_url": "https://generativelanguage.googleapis.com",
                 },
             },
-            load_config(LlmPreset.GEMINI_FLASH_3_8).model_dump(),
+            load_config(LlmPreset.GEMINI_FLASH).model_dump(),
         )
 
     def test_list_provider_models__contains_only_supported_choices(self):
@@ -94,12 +94,12 @@ class ConfigTestCase(TestCase):
                         {
                             "id": "flash-lite",
                             "label": "Flash Lite",
-                            "preset": "gemini",
+                            "preset": "gemini_lite",
                         },
                         {
                             "id": "flash-3.8",
                             "label": "Flash 3.8",
-                            "preset": "gemini_flash_3_8",
+                            "preset": "gemini_flash",
                         },
                     ],
                 },
