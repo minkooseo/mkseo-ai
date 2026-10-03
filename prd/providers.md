@@ -1,44 +1,67 @@
 # Providers
 
-Applications select LM Studio, OMLX, Gemini, or OpenAI through one validated
-configuration. Selecting a provider constructs its PydanticAI model adapter
-without sending a model request. Prompts and conversation behavior belong to the
-consuming application.
+Both language packages configure oMLX and LM Studio. Python also configures
+Gemini and OpenAI through PydanticAI. Provider setup does not send a model
+request. Applications own prompts, agents, and conversation behavior;
+[Generation](generation.md) defines the TypeScript generation contract.
 
-## Configuration
+## Presets and model selection
 
-The library owns development choices for oMLX, LM Studio, and Gemini. oMLX and
-LM Studio each offer only Gemma 4. Gemini offers only Flash Lite and Flash 3.8.
-Each choice has a readable label and resolves to one configured model name, so
-applications can present provider and model lists without making users enter
-model IDs or enum values. oMLX is the default. Invalid selections are rejected.
-OpenAI remains supported by the model adapter but has no bundled choice.
-Explicit configuration supports development or production mode; there is no
-bundled production preset.
+Bundled non-secret presets supply the provider, model identifier, and API root.
+Applications can select a preset without repeating model names or endpoints.
+Local preset values agree across languages, and each installed package supplies
+its presets independently of the working directory or the other language.
 
-Configuration requires a development or production mode, a listen port from 1
-through 65,535, and a provider-specific model selection. Unknown fields and
-unsupported providers are rejected. Model names and all API roots must be
+The local choices are Gemma 4 through oMLX and Gemma 4 through LM Studio. Python
+also offers Gemini 3.5 Flash-Lite and Gemini 3.8 Flash. Its catalog groups
+readable model choices by provider. OpenAI accepts explicit Python configuration
+but has no bundled preset.
+
+Python selects oMLX when no preset is supplied and rejects untyped preset
+selections or configuration-file paths. TypeScript requires an explicit local
+provider. Both reject unsupported providers rather than choosing a fallback.
+
+Every configured model requires its provider's model identifier and an API root.
+TypeScript permits model and endpoint overrides during client setup; generation
+calls reuse that fixed selection. No model discovery, loading, or
+first-available selection is implicit. The resolved model identifier is sent
+with requests.
+
+Local presets point to the model host's loopback address, using port 8000 for
+oMLX and 1234 for LM Studio. A physical phone requires an address that reaches
+the host; its own loopback address does not identify the host.
+
+## Configuration constraints
+
+Python configuration is immutable and requires development or production mode, a
+listen port from 1 through 65,535, and provider-specific model settings. Every
+bundled preset selects development mode and port 8787. Unknown fields and
+unsupported providers fail validation. Model names and API roots must be
 nonempty after trimming surrounding whitespace.
 
-Every provider requires a model name and an explicit API root. Gemini uses the
-Google API; LM Studio, OMLX, and OpenAI use the OpenAI-compatible API. The
-configured API root is used directly for the selected provider connection.
-Invalid settings fail with an error instead of silently choosing replacement
-settings. Presets are available from the installed package regardless of the
-application working directory.
+TypeScript configuration contains only the local provider, model, and endpoint.
+The client validates and snapshots these settings so later caller mutations do
+not change active requests. Model names must be nonblank. API roots must use
+HTTP or HTTPS and contain no embedded credentials, query, or fragment. Changing
+the selection requires a new client.
+
+Gemini uses the Google API. Python's other providers and both TypeScript
+providers use the OpenAI-compatible API.
 
 ## Credentials and transport
 
-Configuration has no API key fields. Provider SDKs resolve credentials from the
-environment. Gemini uses `GOOGLE_API_KEY`, with `GEMINI_API_KEY` as a fallback
-when the preferred key is absent or empty. OpenAI-compatible connections,
-including LM Studio and OMLX, use `OPENAI_API_KEY` when set. With that key
-absent, the OpenAI-compatible provider supplies a placeholder token.
+Presets contain no credentials. Python delegates credential resolution to its
+provider SDKs. Gemini prefers `GOOGLE_API_KEY` and falls back to
+`GEMINI_API_KEY` when the preferred key is absent or empty. OpenAI-compatible
+providers use `OPENAI_API_KEY` when present and otherwise supply a placeholder
+token for the configured endpoint.
 
-Consumers may supply an HTTP client to control transport for any provider. They
-retain responsibility for its lifetime. Credential selection is the same whether
-the consumer supplies a client or allows the provider to manage its own
-transport.
+Python callers explicitly supply an asynchronous HTTP client or choose
+provider-managed transport. A supplied client's lifecycle remains with its
+caller. Credential selection is the same with either transport choice.
 
-See [Architecture](architecture.md) for package and application boundaries.
+TypeScript requires a caller-supplied runtime transport and reads no environment
+variables. Applications provide authentication through that transport when
+needed. The library imports neither Node nor Expo into its generation runtime.
+
+[Architecture](architecture.md) describes the independent package boundaries.

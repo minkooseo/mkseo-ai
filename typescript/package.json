@@ -1,0 +1,44 @@
+{
+  "name": "@mkseo/ai",
+  "version": "0.1.0",
+  "description": "Typed text and structured generation for local model providers",
+  "type": "module",
+  "sideEffects": false,
+  "packageManager": "pnpm@11.23.0+sha512.f00082e5b283a199b74e079da28d155c008fe232f44c8a06ea7ddfa014ecf719fc362f790ecc67b28106ddac2afb24c49a9a079159da560b2ce7d1e98efd11af",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/client/model-client.ts",
+      "default": "./src/client/model-client.ts"
+    }
+  },
+  "files": [
+    "src/**/*.ts",
+    "!src/**/__tests__/**",
+    "src/client/local-models.json"
+  ],
+  "scripts": {
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "build": "pnpm pack --out dist/mkseo-ai.tgz",
+    "demo:watch": "tsx watch --include \"src/**/*.ts\" --include \"src/**/*.json\" demo.ts",
+    "demo-typescript": "tsx demo.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.3",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^5.0.2"
+  }
+}

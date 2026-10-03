@@ -1,0 +1,36 @@
+rules:
+  - id: no-dynamic-code-typescript
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Keep generated content as data; do not evaluate it as code.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: globalThis.eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+  - id: no-dynamic-code-python
+    languages: [python]
+    severity: ERROR
+    message: Keep generated content as data; do not evaluate it as code.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+  - id: no-subprocess-shell
+    languages: [python]
+    severity: ERROR
+    message: Pass an argument list to subprocess without enabling the shell.
+    pattern: subprocess.$CALL(..., shell=True, ...)
+  - id: require-http-certificate-verification
+    languages: [python]
+    severity: ERROR
+    message: Keep certificate verification enabled for HTTP clients.
+    pattern-either:
+      - pattern: httpx.Client(..., verify=False, ...)
+      - pattern: httpx.AsyncClient(..., verify=False, ...)
+      - pattern: httpx2.Client(..., verify=False, ...)
+      - pattern: httpx2.AsyncClient(..., verify=False, ...)
+  - id: require-node-certificate-verification
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Keep certificate verification enabled for HTTPS connections.
+    pattern: "{ ..., rejectUnauthorized: false, ... }"

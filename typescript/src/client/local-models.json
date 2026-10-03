@@ -1,0 +1,12 @@
+{
+  "omlx": {
+    "provider": "omlx",
+    "name": "Jundot--gemma-4-E4B-it-oQ4e-mtp",
+    "baseUrl": "http://127.0.0.1:8000/v1"
+  },
+  "lmstudio": {
+    "provider": "lmstudio",
+    "name": "google/gemma-4-e4b",
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  }
+}

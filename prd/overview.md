@@ -1,20 +1,31 @@
 # mkseo-ai
 
-mkseo-ai is a shared Python library for configuring and selecting PydanticAI
-model providers. It gives applications one validated configuration boundary for
-local and hosted models, so each application can focus on its own conversation
-behavior.
+mkseo-ai provides independent Python and TypeScript packages for reusable model
+access. Applications share validated provider setup and generation contracts
+while retaining their own prompts, agents, conversation state, and workflows.
 
-Love and Stride consume the library through editable local dependencies.
-Supported providers are OMLX, LM Studio, Gemini, and OpenAI. Shared bundled
-presets supply non-secret settings, with OMLX selected by default. Provider SDKs
-obtain credentials from the environment when needed.
+Python supplies PydanticAI adapters for local and hosted providers, a readable
+preset catalog, and immutable evaluation coverage/attempt records. Love and
+Stride consume the Python package through editable dependencies.
 
-The library supplies model adapters. Applications own agents, instructions,
-conversation history, network endpoints, and any HTTP client they provide.
+TypeScript supplies plain-string and validated-object generation for oMLX and LM
+Studio. It supports explicit structured or prompted output, bounded retries, and
+classified failures through an injected Node or Expo transport. Model presets
+avoid repeated endpoint and model configuration.
+
+Each package owns its dependencies and distribution. Editable TypeScript
+consumption must expose source and preset changes without a library build, copy,
+reinstall, or publish. Applications own concurrency, persistence, runtime
+lifecycle, and user-facing behavior.
 
 ## Product map
 
-- [Architecture](architecture.md): package boundaries and development runtime.
-- [Developer UX](ux.md): configuration, integration, and development workflow.
-- [Providers](providers.md): provider selection and configuration requirements.
+- [Architecture](architecture.md): package/module boundaries, runtimes, and
+  editable integration.
+- [Developer UX](ux.md): setup, generation use, the demo, and development flow.
+- [Providers](providers.md): model choices, configuration, and credential
+  ownership for each language.
+- [Generation](generation.md): TypeScript results, schemas, retries, and
+  failures.
+- [Evaluation records](evaluation.md): Python coverage, attempt ownership,
+  evidence, and outcome invariants.

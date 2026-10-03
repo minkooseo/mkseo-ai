@@ -2,39 +2,55 @@
 
 ## Integration flow
 
-A consuming application selects a shared preset and receives validated settings.
-OMLX is the default when no preset is selected. It selects a PydanticAI model
-adapter from those settings and uses that adapter in its own agent. Model
-selection does not send a model request.
+Developers select a preset and receive validated model settings. Python callers
+construct a provider adapter for their own agents. TypeScript callers construct
+a reusable client with their runtime transport, then request plain strings or
+validated objects. Setup does not send a model request. Provider choices,
+defaults, overrides, and credential ownership belong in
+[Providers](providers.md).
 
-Applications can display grouped providers and readable model choices at
-startup. The library owns the bundled Python settings; consumers select a choice
-rather than supplying a configuration file path or model ID. See
-[Providers](providers.md) for the available choices.
+TypeScript calls make output expectations explicit: plain text needs no schema;
+object output includes a schema and selected mode. Each call specifies an output
+limit. Callers receive the result or a classified error and decide how to
+present it in their application. [Generation](generation.md) owns mode, retry,
+and failure semantics.
 
-Settings contain no API keys. Provider SDKs obtain credentials from the process
-environment, including for local endpoints when configured. Each model has an
-API address, and its provider determines which compatible API is used.
-[Providers](providers.md) owns the preset contents and configuration rules.
+## Demo experience
 
-The application explicitly supplies either its own asynchronous HTTP client or
-no client. A supplied client remains the application's responsibility to manage
-and close.
+The editable Node demo is a self-contained starting point. Developers choose a
+preset and edit the prompts, schema, and call options directly. Four examples
+show one plain string result and each of the three object-output modes. Each
+section starts with an asterisk-prefixed title and shows only its input and
+output. Examples use the generation API's default retry behavior.
 
-Invalid settings and provider setup failures surface as errors to the caller.
-The library does not choose a fallback provider or turn failures into chat
-replies.
+Successful values appear on standard output. Unexpected failures appear on
+standard error and make the process exit unsuccessfully. A failed example does
+not hide later examples, allowing developers to inspect mode-specific support.
+Direct and watch modes run source without a compile step; watch mode must
+restart for library source and preset edits.
 
-## Development workflow
+## Editable development
 
-Local consumers use editable dependencies so library changes are available
-without publishing a release. Python dependency management uses uv; pnpm
-provides convenient commands for formatting, linting, type checks, tests,
-dependency checks, and package builds. The same quality gate runs before a
-commit. [Architecture](architecture.md) owns the command and package map.
+Each language package is independently installable and operable. Local consumers
+link directly to the corresponding package checkout. Python consumers restart
+after source changes. Node runs TypeScript source through its configured loader;
+Expo consumes the same source through Metro.
 
-## Interface design
+Connected Expo applications must automatically refresh or reload after linked
+TypeScript source or preset edits. A developer must not build, copy, reinstall,
+or publish the library to see an ordinary edit. Refresh recreates configured
+clients so changed presets take effect and obsolete work cannot publish results.
+Initial native setup and dependency additions remain separate setup work.
 
-The product interface is a typed Python API and validated configuration. There
-are no visual screens, navigation flows, dialogs, or design tokens. Applications
-define their own user-facing chat experience and error messages.
+A source link and visible Metro dependency roots are prerequisites. A packed
+release is usable for distribution but is not an editable development link.
+[Architecture](architecture.md) owns package boundaries and runtime setup;
+[verification notes](../verification-typescript.md) record available evidence
+and remaining runtime limitations.
+
+## Interface and design system
+
+The product surfaces are typed developer APIs, configuration choices, and the
+terminal demo. It supplies no application screens, navigation, dialogs, toasts,
+visual components, or design tokens. Consuming applications own those surfaces
+and their user-facing error language.

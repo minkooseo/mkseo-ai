@@ -28,9 +28,7 @@ target-version = "py314"
 select = ["B", "E4", "E7", "E9", "F", "I", "RUF", "SIM", "UP"]
 
 [tool.pyright]
-include = ["src", "tests"]
-venvPath = "."
-venv = ".venv"
+include = ["src", "tests", "check.py"]
 typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
