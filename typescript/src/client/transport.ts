@@ -117,21 +117,21 @@ function completionText(content: string, context: AttemptContext): string {
       context,
     );
   }
-  if (!isRecord(body) || !Array.isArray(body.choices)) {
+  if (!isRecord(body) || !Array.isArray(body["choices"])) {
     throw failure("protocol", "Completion choices missing", body, context);
   }
-  const choice: unknown = body.choices[0];
+  const choice: unknown = body["choices"][0];
   if (!isRecord(choice)) {
     throw failure("protocol", "Completion choice missing", body, context);
   }
-  if (choice.finish_reason === "length") {
+  if (choice["finish_reason"] === "length") {
     throw failure("truncation", "Model output was truncated", body, context);
   }
   if (
-    choice.finish_reason !== "stop" ||
-    !isRecord(choice.message) ||
-    choice.message.role !== "assistant" ||
-    typeof choice.message.content !== "string"
+    choice["finish_reason"] !== "stop" ||
+    !isRecord(choice["message"]) ||
+    choice["message"]["role"] !== "assistant" ||
+    typeof choice["message"]["content"] !== "string"
   ) {
     throw failure(
       "protocol",
@@ -140,7 +140,7 @@ function completionText(content: string, context: AttemptContext): string {
       context,
     );
   }
-  return choice.message.content;
+  return choice["message"]["content"];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
