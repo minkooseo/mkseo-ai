@@ -3,7 +3,8 @@
 The TypeScript package turns caller-owned instructions and a nonblank prompt
 into plain text or a validated object using the configured local model.
 [Providers](providers.md) owns model setup. Applications retain agents,
-conversation history, concurrency, persistence, and user-requested retries.
+conversation history, concurrency policy, persistence, and user-requested
+retries.
 
 ## Results and output modes
 
@@ -67,6 +68,19 @@ count.
 Applications own runtime lifecycle and decide whether a completed result still
 belongs to their current work. Each generation call owns its retry budget;
 independent calls do not share attempt counts.
+
+## Concurrency
+
+Applications can use an optional work gate to bound concurrent activity. They
+choose a positive safe-integer limit and which requests share that gate. At most
+that many tasks run at once, and waiting tasks start in queue order. Text and
+object generation have no implicit or global concurrency limit; gated generation
+calls retain their independent retry budgets.
+
+Canceling work before it starts rejects the request with the cancellation reason
+without executing it. Once work starts, that work owns cancellation, and its
+slot remains occupied until it settles. Success and failure both release the
+slot for the next waiting task.
 
 ## Failures
 

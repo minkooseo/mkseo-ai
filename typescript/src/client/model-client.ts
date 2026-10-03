@@ -15,6 +15,7 @@ export type { ModelClientErrorCode } from "./model-client-error.ts";
 export type { GenerationMode } from "../generation/schema-contract.ts";
 export type { GenerateInput, ObjectInput } from "../generation/generation.ts";
 export type { ModelFetch } from "./transport.ts";
+export { ConcurrencyGate } from "../generation/concurrency-gate.ts";
 
 export interface ModelClientOptions {
   /** Fixed model selection; e.g. loadPreset('omlx'). */

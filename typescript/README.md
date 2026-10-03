@@ -104,13 +104,26 @@ keep the same model, prompt, schema, mode, and token limit. Backoff uses jitter,
 a 250 ms initial ceiling, a 2 second cap, and honors `Retry-After` as a minimum.
 
 Concurrent calls are independent. Applications own runtime lifecycle, stale
-result fencing, concurrency, persistence, and later user-requested retries.
+result fencing, concurrency limits, persistence, and later user-requested
+retries.
 
 `ModelClientError` exposes `code`, `attempts`, `status`, and `cause`. Codes are
 `configuration`, `schema`, `transport`, `http`, `unsupported-capability`,
 `protocol`, `output`, `truncation`, and `internal`. Preflight failures have zero
 network attempts; an absent HTTP status is `null`. Applications can wrap their
 injected fetch to record transport diagnostics.
+
+## Bound concurrent work
+
+Import `ConcurrencyGate` from `@mkseo/ai` and construct it with a positive
+safe-integer limit. Share that instance across the work that should use the same
+limit. `gate.run(signal, work)` returns the asynchronous work's result and
+queues excess calls in arrival order. Success and failure both release a slot.
+
+Aborting a queued call rejects it without starting its work. Once work starts,
+it owns cancellation of its underlying operation; the slot stays occupied until
+that work settles. The gate does not install a global limit or change
+model-client retries.
 
 ## Expo and editable consumption
 

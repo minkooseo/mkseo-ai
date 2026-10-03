@@ -15,8 +15,10 @@ avoid repeated endpoint and model configuration.
 
 Each package owns its dependencies and distribution. Editable TypeScript
 consumption must expose source and preset changes without a library build, copy,
-reinstall, or publish. Applications own concurrency, persistence, runtime
-lifecycle, and user-facing behavior.
+reinstall, or publish. Applications choose concurrency policy and limits. An
+optional TypeScript utility limits active work, queues excess requests, and
+allows waiting requests to be canceled. Applications retain ownership of
+persistence, runtime lifecycle, and user-facing behavior.
 
 ## Product map
 

@@ -44,9 +44,9 @@ and commands. `typescript/tsconfig.json` configures the package's type checking.
 The runtime is split into client and generation responsibilities:
 
 - `typescript/src/client/model-client.ts` is the public export entry. It exposes
-  `createModelClient`, `loadPreset`, `GenerationMode`, generation inputs, and
-  classified errors. The factory snapshots the model and supplied fetch, then
-  delegates text and object calls to generation.
+  `createModelClient`, `loadPreset`, `ConcurrencyGate`, `GenerationMode`,
+  generation inputs, and classified errors. The factory snapshots the model and
+  supplied fetch, then delegates text and object calls to generation.
 - `typescript/src/client/model-config.ts` owns preset loading and explicit
   configuration validation. Its adjacent `local-models.json` supplies presets.
 - `typescript/src/client/model-client-error.ts` defines caller-visible failure
@@ -60,6 +60,12 @@ The runtime is split into client and generation responsibilities:
   each generation request to the retry lifecycle.
 - `typescript/src/generation/retry.ts` owns `AttemptContext`, the retry loop,
   retry eligibility, budgets, and backoff scheduling for text and objects.
+- `typescript/src/generation/concurrency-gate.ts` provides optional,
+  platform-neutral concurrency control. Its positive safe integer limit bounds
+  active work, and waiting work starts in FIFO order. Queued work can cancel
+  through `AbortSignal`; active work keeps its slot until it settles. Callers
+  choose the limit and which requests share a gate. `createModelClient` does not
+  install a global limiter.
 - `typescript/src/generation/schema-contract.ts` owns `SchemaContract` and
   `GenerationMode`. `compileJsonSchema` uses native Zod input conversion for
   every object-output mode; `schemaToPrompt` separately formats JSON Schema into
