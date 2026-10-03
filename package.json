@@ -9,18 +9,20 @@
   },
   "scripts": {
     "prepare": "husky",
-    "check": "pnpm deps:check && pnpm peers:check && pnpm format:check && pnpm presets:check && pnpm -C typescript check && pnpm check:python && pnpm semgrep",
+    "check": "pnpm deps:check && pnpm peers:check && pnpm format:check && pnpm presets:check && pnpm -C typescript check && pnpm check:python && pnpm knip && pnpm semgrep",
     "deps:check": "pnpm install --frozen-lockfile --lockfile-only --ignore-scripts && uv lock --project python --check",
     "peers:check": "pnpm peers check",
     "format": "pnpm exec prettier --write .",
     "format:check": "pnpm exec prettier --check .",
     "presets:check": "node scripts/check-presets.js",
     "check:python": "uv run --project python --locked python python/check.py",
+    "knip": "knip",
     "semgrep": "semgrep scan --test --metrics off --disable-version-check .semgrep && semgrep scan --config .semgrep/security.yaml --error --strict --metrics off --disable-version-check python/src python/check.py typescript/src typescript/demo.ts scripts",
     "demo-typescript": "pnpm -C typescript demo-typescript"
   },
   "devDependencies": {
     "husky": "^9.1.7",
+    "knip": "6.29.0",
     "prettier": "^3.9.5"
   }
 }
