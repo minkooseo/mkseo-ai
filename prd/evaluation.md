@@ -14,24 +14,32 @@ measurement must each contain at least one child; a case may have no attempts.
 
 Axis identifiers are unique within a suite, and measurement identifiers are
 unique within their axis. Every case and attempt has exactly one owner within a
-suite. An attempt must name the case that contains it. Different cases may refer
+suite; an attempt's case is the one that contains it. Different cases may refer
 to the same corpus example so that separate criteria can assess that example.
 
-Recording an attempt produces a new validated suite snapshot and preserves prior
-snapshots and histories. Unknown cases, duplicate ownership, and attempts linked
-to the wrong case fail rather than changing unrelated records.
+Recording an attempt into a named case produces a new validated suite snapshot
+and preserves prior snapshots and histories. Unknown cases and duplicate
+ownership fail rather than changing unrelated records.
+
+## Tasks and rubrics
+
+A task is one application-defined input with its own identifier; several cases
+may assess the same task. A rubric names the criterion a judge assesses and the
+grades it may assign. Each grade has a non-negative score and a description of
+what output at that grade shows. A rubric has at least two grades in strictly
+ascending score order, and its passing score must be one of those grades.
 
 ## Attempt outcomes
 
-Each attempt identifies itself, its case, and an optional input variant. It
-records success or failure, elapsed wall-clock time, application-defined output,
-and failure detail. Identifiers and failure text must be nonblank when present;
+Each attempt has its own identifier. Its outcome is either success or failure
+with failure detail; it also records elapsed wall-clock time and
+application-defined output. Identifiers and failure text must be nonblank;
 elapsed time must be finite and non-negative, including for failed attempts.
 
 Success means valid output was obtained, independently of its evaluated quality.
-A successful attempt requires output and no error. A failed attempt requires an
-error and may retain partial output as evidence. Explicit absence distinguishes
-unused variants or unavailable output from omitted fields.
+A successful attempt requires output and carries no failure detail. A failed
+attempt requires failure detail and may retain partial output as evidence.
+Explicit absence distinguishes unavailable output from omitted fields.
 
 Records are immutable, reject unknown fields, and use strict validated values.
 Application output remains typed within its attempt history. A caller-supplied

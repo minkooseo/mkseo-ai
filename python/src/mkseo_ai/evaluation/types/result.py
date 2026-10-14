@@ -1,4 +1,4 @@
-"""Evaluation suite ownership tree and per-attempt run records."""
+"""Evaluation results: the suite ownership tree and per-attempt runs."""
 
 from __future__ import annotations
 
@@ -13,36 +13,55 @@ from pydantic import (
     model_validator,
 )
 
-type NonBlankText = Annotated[str, Field(pattern=r"\S")]
+from mkseo_ai.evaluation.types.text import NonBlankText
 
 
-class EvaluationModel(BaseModel):
-    """Immutable evaluation model with explicit fields and strict values."""
+class Latency(BaseModel):
+    """Elapsed wall-clock time for one complete evaluation attempt."""
 
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-
-class Latency(EvaluationModel):
-    """Elapsed wall-clock time for one complete evaluation attempt."""
 
     seconds: Annotated[FiniteFloat, Field(ge=0)]
     """Finite non-negative duration, for example 2.5 seconds."""
 
 
-class EvaluationRun[Output](EvaluationModel):
+class RunSucceeded(BaseModel):
+    """Valid output was obtained, independently of its quality."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    status: Literal["succeeded"]
+    """Outcome discriminator, always `succeeded`."""
+
+
+class RunFailed(BaseModel):
+    """No valid output was obtained."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    status: Literal["failed"]
+    """Outcome discriminator, always `failed`."""
+
+    error: NonBlankText
+    """Failure detail, for example `provider timed out`."""
+
+
+type RunOutcome = Annotated[
+    RunSucceeded | RunFailed, Field(discriminator="status")
+]
+"""Whether one attempt obtained valid output, keyed by `status`."""
+
+
+class CaseRun[Output](BaseModel):
     """Immutable root record owned by exactly one evaluation case."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     id: NonBlankText
     """Unique attempt identifier, for example a UUID."""
 
-    case_id: NonBlankText
-    """Owning evaluation case, for example `reply-grounding-01`."""
-
-    variant_id: NonBlankText | None
-    """Input variant, for example `calm-counselor`, or null when unused."""
-
-    status: Literal["succeeded", "failed"]
-    """Whether valid output was obtained, independently of its quality."""
+    outcome: RunOutcome
+    """Success, or failure with its detail."""
 
     latency: Latency
     """Duration of this attempt, including failed generation."""
@@ -50,27 +69,23 @@ class EvaluationRun[Output](EvaluationModel):
     output: Output | None
     """Application evidence, including partial work after a failure."""
 
-    error: NonBlankText | None
-    """Failure detail, or null when the attempt succeeded."""
-
     @model_validator(mode="after")
-    def _outcome_is_consistent(self) -> Self:
-        if self.status == "succeeded":
-            if self.output is None or self.error is not None:
-                raise ValueError("succeeded run requires output and no error")
-        elif self.error is None:
-            raise ValueError("failed run requires an error")
+    def _success_has_output(self) -> Self:
+        if isinstance(self.outcome, RunSucceeded) and self.output is None:
+            raise ValueError("succeeded run requires output")
         return self
 
 
 type EvaluationTarget[Input, Output] = Callable[
-    [Input], Awaitable[EvaluationRun[Output]]
+    [Input], Awaitable[CaseRun[Output]]
 ]
 """Executes one complete attempt for a bound case and returns its record."""
 
 
-class Case[Output](EvaluationModel):
+class Case[Output](BaseModel):
     """One criterion-specific case and its recorded attempts."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     id: NonBlankText
     """Evaluation case ID, for example `reply-contribution-01`."""
@@ -78,12 +93,14 @@ class Case[Output](EvaluationModel):
     example_id: NonBlankText
     """Corpus input reference, for example `reply-fixed-01`."""
 
-    evaluation_runs: tuple[EvaluationRun[Output], ...]
+    evaluation_runs: tuple[CaseRun[Output], ...]
     """Completed attempts in recording order; initially an empty tuple."""
 
 
-class Measurement[Output](EvaluationModel):
+class Measurement[Output](BaseModel):
     """One criterion and the cases that measure it."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     id: NonBlankText
     """Criterion ID, for example `contribution`."""
@@ -92,8 +109,10 @@ class Measurement[Output](EvaluationModel):
     """Cases owned exclusively by this measurement."""
 
 
-class Axis[Output](EvaluationModel):
+class Axis[Output](BaseModel):
     """A group of related measurements."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     id: NonBlankText
     """Concern ID, for example `reply`."""
@@ -104,8 +123,10 @@ class Axis[Output](EvaluationModel):
     """Criteria in this axis, for example Contribution and Grounding."""
 
 
-class EvaluationSuite[Output](EvaluationModel):
+class EvaluationSuite[Output](BaseModel):
     """Coverage and run histories with unique case and run ownership."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     id: NonBlankText
     """Suite identifier, for example `chat`."""
@@ -132,8 +153,6 @@ class EvaluationSuite[Output](EvaluationModel):
                         raise ValueError("a case must have exactly one owner")
                     case_ids.add(case.id)
                     for run in case.evaluation_runs:
-                        if run.case_id != case.id:
-                            raise ValueError("run belongs to a different case")
                         if run.id in run_ids:
                             raise ValueError(
                                 "a run must have exactly one owner"
@@ -141,16 +160,16 @@ class EvaluationSuite[Output](EvaluationModel):
                         run_ids.add(run.id)
         return self
 
-    def append_run(self, run: EvaluationRun[Output]) -> Self:
-        """Return a validated snapshot with one attempt added to its case."""
+    def append_run(self, *, case_id: str, run: CaseRun[Output]) -> Self:
+        """Return a validated snapshot with `run` added to case `case_id`."""
         data = self.model_dump(mode="python", round_trip=True)
         for axis in data["axes"]:
             for measurement in axis["measurements"]:
                 for case in measurement["cases"]:
-                    if case["id"] == run.case_id:
+                    if case["id"] == case_id:
                         case["evaluation_runs"] = (
                             *case["evaluation_runs"],
                             run.model_dump(mode="python", round_trip=True),
                         )
                         return type(self).model_validate(data)
-        raise ValueError(f"unknown case: {run.case_id}")
+        raise ValueError(f"unknown case: {case_id}")

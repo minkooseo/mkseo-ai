@@ -1,38 +1,54 @@
 from typing import Annotated, Literal
 from unittest import IsolatedAsyncioTestCase, TestCase
 
-from pydantic import Field, FiniteFloat, StrictBool, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictBool,
+    ValidationError,
+)
 
 from mkseo_ai.evaluation import (
     Case,
-    EvaluationModel,
-    EvaluationRun,
+    CaseRun,
     EvaluationSuite,
     EvaluationTarget,
     Latency,
     NonBlankText,
+    RunFailed,
+    RunSucceeded,
 )
 
 
-class ExampleEvidence(EvaluationModel):
+class ExampleEvidence(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
     source_id: NonBlankText
     quote: NonBlankText
 
 
-class ExampleFinding(EvaluationModel):
+class ExampleFinding(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
     severity: Literal["minor", "major", "critical"]
     explanation: NonBlankText
     evidence: Annotated[tuple[ExampleEvidence, ...], Field(min_length=1)]
 
 
-class ExampleItem(EvaluationModel):
+class ExampleItem(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
     index: Annotated[int, Field(ge=1)]
     passed: StrictBool
     score: Annotated[FiniteFloat, Field(ge=0, le=1)] | None
     findings: tuple[ExampleFinding, ...]
 
 
-class ExampleOutput(EvaluationModel):
+class ExampleOutput(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
     summary: NonBlankText
     items: Annotated[tuple[ExampleItem, ...], Field(min_length=1)]
     note: NonBlankText | None
@@ -74,9 +90,7 @@ SUITE_JSON = """
 RUN_JSON = """
 {
   "id": "run-002",
-  "case_id": "reply-grounding-01",
-  "variant_id": "calm-counselor",
-  "status": "succeeded",
+  "outcome": { "status": "succeeded" },
   "latency": { "seconds": 2.5 },
   "output": {
     "summary": "One claim lacks support.",
@@ -100,24 +114,20 @@ RUN_JSON = """
       }
     ],
     "note": null
-  },
-  "error": null
+  }
 }
 """
 
 type Suite = EvaluationSuite[ExampleOutput]
-type Run = EvaluationRun[ExampleOutput]
+type Run = CaseRun[ExampleOutput]
 
 
-def _failed_run(run_id: str, case_id: str = "reply-grounding-01") -> Run:
-    return EvaluationRun[ExampleOutput](
+def _failed_run(run_id: str) -> Run:
+    return CaseRun[ExampleOutput](
         id=run_id,
-        case_id=case_id,
-        variant_id=None,
-        status="failed",
+        outcome=RunFailed(status="failed", error="provider timed out"),
         latency=Latency(seconds=1.0),
         output=None,
-        error="provider timed out",
     )
 
 
@@ -135,38 +145,34 @@ def _case(suite: Suite, case_id: str) -> Case[ExampleOutput]:
     )
 
 
-class EvaluationRunTestCase(TestCase):
+class CaseRunTestCase(TestCase):
     def test_run__parses_nested_application_output(self):
-        run = EvaluationRun[ExampleOutput].model_validate_json(RUN_JSON)
+        run = CaseRun[ExampleOutput].model_validate_json(RUN_JSON)
         assert run.output is not None
         self.assertIsInstance(run.output, ExampleOutput)
         self.assertEqual("major", run.output.items[0].findings[0].severity)
         self.assertEqual(2.5, run.latency.seconds)
 
     def test_run__rejects_inconsistent_outcome(self):
-        base = EvaluationRun[ExampleOutput].model_validate_json(RUN_JSON)
+        base = CaseRun[ExampleOutput].model_validate_json(RUN_JSON)
         evidence = base.output
-        for status, output, error in [
-            ("succeeded", None, None),
-            ("succeeded", evidence, "unexpected error"),
-            ("failed", evidence, None),
+        for outcome, output in [
+            (RunSucceeded(status="succeeded"), None),
+            ({"status": "succeeded", "error": "unexpected error"}, evidence),
+            ({"status": "failed"}, evidence),
+            ({"status": "failed", "error": " "}, evidence),
         ]:
             with (
-                self.subTest(status=status, error=error),
+                self.subTest(outcome=outcome, output=output),
                 self.assertRaises(ValidationError),
             ):
                 base.model_validate(
-                    {
-                        **dict(base),
-                        "status": status,
-                        "output": output,
-                        "error": error,
-                    }
+                    {**dict(base), "outcome": outcome, "output": output}
                 )
 
     def test_run__rejects_missing_nullable_and_invalid_values(self):
         for field, value in [
-            ("variant_id", ...),
+            ("output", ...),
             ("id", " "),
             ("latency", {"seconds": -1.0}),
             ("latency", {"seconds": float("inf")}),
@@ -181,19 +187,24 @@ class EvaluationRunTestCase(TestCase):
                 self.subTest(field=field, value=value),
                 self.assertRaises(ValidationError),
             ):
-                EvaluationRun[ExampleOutput].model_validate(data)
+                CaseRun[ExampleOutput].model_validate(data)
 
 
 class EvaluationSuiteTestCase(TestCase):
     def test_append_run__preserves_failures_and_prior_snapshot(self):
         original = _load_suite()
-        suite = original.append_run(_failed_run("run-001"))
+        suite = original.append_run(
+            case_id="reply-grounding-01", run=_failed_run("run-001")
+        )
         suite = suite.append_run(
-            EvaluationRun[ExampleOutput].model_validate_json(RUN_JSON)
+            case_id="reply-grounding-01",
+            run=CaseRun[ExampleOutput].model_validate_json(RUN_JSON),
         )
 
         runs = _case(suite, "reply-grounding-01").evaluation_runs
-        self.assertEqual(["failed", "succeeded"], [r.status for r in runs])
+        self.assertEqual(
+            ["failed", "succeeded"], [r.outcome.status for r in runs]
+        )
         self.assertIsInstance(runs[1].output, ExampleOutput)
         self.assertEqual(
             (), _case(original, "reply-grounding-01").evaluation_runs
@@ -204,7 +215,8 @@ class EvaluationSuiteTestCase(TestCase):
 
     def test_append_run__round_trips_through_json(self):
         suite = _load_suite().append_run(
-            EvaluationRun[ExampleOutput].model_validate_json(RUN_JSON)
+            case_id="reply-grounding-01",
+            run=CaseRun[ExampleOutput].model_validate_json(RUN_JSON),
         )
         self.assertEqual(
             suite,
@@ -214,13 +226,19 @@ class EvaluationSuiteTestCase(TestCase):
         )
 
     def test_append_run__rejects_duplicate_and_unknown_runs(self):
-        suite = _load_suite().append_run(_failed_run("run-001"))
+        suite = _load_suite().append_run(
+            case_id="reply-grounding-01", run=_failed_run("run-001")
+        )
         with self.assertRaisesRegex(ValidationError, "exactly one owner"):
-            suite.append_run(_failed_run("run-001"))
+            suite.append_run(
+                case_id="reply-grounding-01", run=_failed_run("run-001")
+            )
         with self.assertRaisesRegex(ValidationError, "exactly one owner"):
-            suite.append_run(_failed_run("run-001", "reply-contribution-01"))
+            suite.append_run(
+                case_id="reply-contribution-01", run=_failed_run("run-001")
+            )
         with self.assertRaisesRegex(ValueError, "unknown case: missing"):
-            suite.append_run(_failed_run("run-002", "missing"))
+            suite.append_run(case_id="missing", run=_failed_run("run-002"))
 
     def test_suite__rejects_ownership_violations(self):
         def suite_with(axes: list[object]) -> dict[str, object]:
@@ -272,9 +290,16 @@ class EvaluationSuiteTestCase(TestCase):
                 ),
             ),
             (
-                "run belongs to a different case",
+                "a run must have exactly one owner",
                 suite_with(
-                    [axis("reply", measurement("a", case("c1", [run])))]
+                    [
+                        axis(
+                            "reply",
+                            measurement(
+                                "a", case("c1", [run]), case("c2", [run])
+                            ),
+                        )
+                    ]
                 ),
             ),
             (
@@ -296,8 +321,10 @@ class EvaluationTargetTestCase(IsolatedAsyncioTestCase):
 
         async def run_target(input: str) -> Run:
             self.assertEqual(case.example_id, input)
-            return _failed_run("run-001", case.id)
+            return _failed_run("run-001")
 
         target: EvaluationTarget[str, ExampleOutput] = run_target
-        suite = suite.append_run(await target("reply-fixed-01"))
+        suite = suite.append_run(
+            case_id=case.id, run=await target("reply-fixed-01")
+        )
         self.assertEqual(1, len(_case(suite, case.id).evaluation_runs))

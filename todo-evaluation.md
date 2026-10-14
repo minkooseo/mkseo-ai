@@ -266,7 +266,6 @@ def make_taro_target(
         return EvaluationRun[TaroResult](
             id=str(uuid4()),
             case_id=case.id,
-            variant_id=None,
             status="failed" if result.failure is not None else "succeeded",
             latency=Latency(seconds=result.duration_seconds),
             output=result,
@@ -289,10 +288,10 @@ follow-up. Its input includes a conversation and personality; its output retains
 completed turns even if a later turn fails.
 
 Use the same adapter pattern around chat's `_run_case`: bind the evaluation
-case, preserve its ID in the returned run, set `variant_id` to the personality,
-and map the helper's duration and failure into run metadata. Construct a fresh
-service/session store and a selector with the original seed before retrying the
-whole case. Multiple turns remain one attempt.
+case, preserve its ID in the returned run, and map the helper's duration and
+failure into run metadata. Construct a fresh service/session store and a
+selector with the original seed before retrying the whole case. Multiple turns
+remain one attempt.
 
 Love's [safety runner](../love/server/safety/evals/evaluate.py) calls
 `SafetyService.assess(...)` once per example with fixed text and history. Wrap
@@ -331,8 +330,6 @@ class EvaluationRun[Output](EvaluationModel):
     """Unique attempt identifier, for example a UUID."""
     case_id: NonBlankText
     """Owning evaluation case, for example `reply-grounding-01`."""
-    variant_id: NonBlankText | None
-    """Input variant, for example `calm-counselor`, or null when unused."""
     status: Literal["succeeded", "failed"]
     """Whether valid output was obtained, independently of its quality."""
     latency: Latency
@@ -421,7 +418,6 @@ though the reviewed item did not pass its criterion. Only the root has latency.
 {
   "id": "run-002",
   "case_id": "reply-grounding-01",
-  "variant_id": "calm-counselor",
   "status": "succeeded",
   "latency": { "seconds": 2.5 },
   "output": {

@@ -30,8 +30,11 @@ with 3.14 as the development target, and builds wheels/source archives with uv.
 - `model.py` constructs the configured PydanticAI Google or OpenAI-compatible
   adapter without sending a model request. Provider SDKs resolve credentials;
   caller-supplied HTTP clients remain caller-owned.
-- `evaluation/types.py` owns immutable coverage and attempt records, exported
-  through `evaluation/__init__.py`. It contains no evaluation runner.
+- `evaluation/types/` holds the evaluation domain types: `result.py` owns
+  immutable coverage and attempt records, `task.py` owns task inputs,
+  `rubric.py` owns grading rubrics, and `text.py` owns shared validated text.
+  `evaluation/__init__.py` exports them. The package contains no evaluation
+  runner or judge.
 - `py.typed` exposes typing to consumers.
 
 [Providers](providers.md) owns configuration behavior;
