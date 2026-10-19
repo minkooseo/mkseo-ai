@@ -1,1 +1,1 @@
-/Users/mkseo/src/config/codex/AGENTS.md
+/Users/mkseo/src/config/agents/AGENTS.md
