@@ -19,6 +19,8 @@ dev = ["pyright>=1.1.411", "pytest>=9.1.1", "ruff>=0.16.0"]
 
 [tool.uv]
 exclude-newer = "1 week"
+# Apply emergency certificate trust updates without the release delay.
+exclude-newer-package = { certifi = false }
 
 [tool.ruff]
 line-length = 80
