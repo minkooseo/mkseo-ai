@@ -12,12 +12,17 @@
     ".": {
       "types": "./src/client/model-client.ts",
       "default": "./src/client/model-client.ts"
+    },
+    "./human-eval": {
+      "types": "./src/human-eval/human-eval.ts",
+      "default": "./src/human-eval/human-eval.ts"
     }
   },
   "files": [
     "src/**/*.ts",
     "!src/**/__tests__/**",
-    "src/client/local-models.json"
+    "src/client/local-models.json",
+    "src/human-eval/AGENT-GUIDE.md"
   ],
   "scripts": {
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -26,7 +31,8 @@
     "test": "vitest run",
     "build": "pnpm pack --out dist/mkseo-ai.tgz",
     "demo:watch": "tsx watch --include \"src/**/*.ts\" --include \"src/**/*.json\" demo.ts",
-    "demo-typescript": "tsx demo.ts"
+    "demo-typescript": "tsx demo.ts",
+    "tune-example": "tsx examples/tune-note-summary.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"

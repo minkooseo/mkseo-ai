@@ -29,6 +29,32 @@ not hide later examples, allowing developers to inspect mode-specific support.
 Direct and watch modes run source without a compile step; watch mode must
 restart for library source and preset edits.
 
+## Human evaluation commands
+
+A project runs its human evaluation command line with one of these commands.
+Each runs once, prints plain text, and exits, so an agent can relay pages and
+replies through a chat; nothing waits for key presses.
+
+- `generate --out <dir> [--split tuning|heldout] [--samples <n>]` makes an
+  output set and prints how many outputs it wrote, each check's rate, and the
+  most alike voices.
+- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]` and
+  `guess --outputs <dir> --out <dir> [--items <n>]` start a blind round and
+  print its first page.
+- `show --out <dir>` prints the current page again, or, for a finished round,
+  where its result is.
+- `choose --out <dir> --reply="<words>"` records the person's reply and prints
+  the next page, or the result when the round is done.
+
+A page is Markdown meant to be pasted unchanged: numbered items with the case
+context, then the outputs under Left and Right, or numbered voices to pick from,
+and one closing line on how to reply, for example `3 l stiff`. Problems the
+person can fix, such as a folder that is not empty, a bad reply, or a round with
+nothing to compare, print one plain line and end with a failing exit code; bugs
+keep their stack trace. A failed model call stops `generate` with an error that
+names the case and voice, and nothing is written, so the same command can run
+again. [Human evaluation](human-eval.md) owns the rules.
+
 ## Editable development
 
 Each language package is independently installable and operable. Local consumers
@@ -50,7 +76,7 @@ and remaining runtime limitations.
 
 ## Interface and design system
 
-The product surfaces are typed developer APIs, configuration choices, and the
-terminal demo. It supplies no application screens, navigation, dialogs, toasts,
-visual components, or design tokens. Consuming applications own those surfaces
-and their user-facing error language.
+The product surfaces are typed developer APIs, configuration choices, the
+terminal demo, and the human evaluation command line. It supplies no application
+screens, navigation, dialogs, toasts, visual components, or design tokens.
+Consuming applications own those surfaces and their user-facing error language.

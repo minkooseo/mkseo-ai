@@ -13,6 +13,8 @@ Python caller -> evaluation coverage + attempt records
 TypeScript caller -> client factory -> generation -> compatible transport
                                            |                 |
                                  schema contract + retry  oMLX / LM Studio
+
+TypeScript project -> human-eval command line -> session -> choices -> round -> outputs
 ```
 
 ## Python package
@@ -46,7 +48,7 @@ with 3.14 as the development target, and builds wheels/source archives with uv.
 and commands. `typescript/tsconfig.json` configures the package's type checking.
 The runtime is split into client and generation responsibilities:
 
-- `typescript/src/client/model-client.ts` is the public export entry. It exposes
+- `typescript/src/client/model-client.ts` is the main export entry. It exposes
   `createModelClient`, `loadPreset`, `ConcurrencyGate`, `GenerationMode`,
   generation inputs, and classified errors. The factory snapshots the model and
   supplied fetch, then delegates text and object calls to generation.
@@ -90,6 +92,42 @@ mode and its required data together.
 runtime imports neither Node nor Expo and receives fetch from its caller. The
 Node-only `typescript/demo.ts` composes the public API and demonstrates its
 plain string output and the three object-output modes.
+
+### Human evaluation
+
+`typescript/src/human-eval/` is the Node-only human evaluation runtime, exported
+as `@mkseo/ai/human-eval` and never imported by the main entry. Folders import
+one way: `cli/` → `session/` → `choices/` → `round/` → `outputs/`. The top-level
+files may be imported by any folder, and only `human-eval.ts` imports `cli/`.
+
+- Top level: `human-eval.ts` is the entry, with `runHumanEvalCli` and the public
+  types. `project.ts` defines what a project supplies: cases, voices, the model
+  call, checks, and the output and label types. `file-io.ts` reads and checks
+  JSON, writes files whole through a temporary file, and refuses an `--out`
+  folder that is not empty; `group-by.ts` groups items by a key;
+  `usage-error.ts` marks problems the person can fix. `AGENT-GUIDE.md` ships
+  with the package and tells an agent how to run an evaluation.
+- `outputs/` produces and measures an output set. `plan.ts` checks the project
+  and lists the model calls; `generate.ts` makes them through the shared
+  `ConcurrencyGate` and saves the files; `summary.ts` describes the run;
+  `output.ts` owns `outputs.jsonl` and matches two output sets; `checks.ts` runs
+  code checks; `overlap.ts` measures 3-gram overlap between voices.
+- `round/` is what the person is shown. `round.ts` owns the saved round schema;
+  `items.ts` draws pair, lineup, and guess items with `spread-pick.ts`;
+  `page.ts` writes a page as Markdown.
+- `choices/` is what the person picked and what it adds up to. `choices.ts`
+  parses replies; `result.ts` counts a finished round with `sign-test.ts`;
+  `format-result.ts` describes the result.
+- `session/` is one comparison in progress: a round plus the choices so far.
+  `session.ts` picks the current page and checks saved choices; `files.ts` reads
+  and writes `round.json`, `choices.json`, and `result.json`; `commands.ts` runs
+  `judge`, `guess`, `show`, and `choose`.
+- `cli/` is the command line only: `cli.ts` sends each command to its code, and
+  `options.ts` parses flags.
+
+`typescript/examples/` holds the smallest project, one prompt and one voice, run
+by the package's `tune-example` command. [Human evaluation](human-eval.md) owns
+the behavior.
 
 Each package ships its own local preset JSON. The root
 `scripts/check-presets.js` checks that the catalogs agree; installed packages

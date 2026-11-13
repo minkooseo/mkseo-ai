@@ -2,8 +2,9 @@
 
 A source-distributed TypeScript library for text and validated object generation
 through oMLX or LM Studio. The caller supplies Node or Expo fetch and its
-prompt. The package has no Python, React, filesystem, or environment variable
-dependency.
+prompt. The main entry has no Python, React, filesystem, or environment variable
+dependency. The Node-only [human evaluation](#human-evaluation) entry helps a
+person tune a prompt by blind comparisons.
 
 ## Unstructured output: a plain string
 
@@ -124,6 +125,111 @@ Aborting a queued call rejects it without starting its work. Once work starts,
 it owns cancellation of its underlying operation; the slot stays occupied until
 that work settles. The gate does not install a global limit or change
 model-client retries.
+
+## Human evaluation
+
+`@mkseo/ai/human-eval` helps a person tune a prompt by blind A/B comparisons. A
+person picks between the model's outputs; no model ever judges. It runs in Node
+only, so the main `@mkseo/ai` entry does not load it.
+
+A project describes its cases, voices, model call, and checks, and passes them
+to `runHumanEvalCli`. That gives it the commands `generate`, `judge`, `guess`,
+`show`, and `choose`. Each runs once and exits; none waits for key presses, so
+an agent can run them and relay pages and replies in a chat.
+[AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation for
+the agent that runs it. Each field is described in
+[project.ts](src/human-eval/project.ts).
+
+### Tune your own prompt
+
+One prompt, one voice, three cases, and one check
+([note-summary-project.ts](examples/note-summary-project.ts)):
+
+```ts
+import { createModelClient, loadPreset } from "@mkseo/ai";
+import type { HumanEvalProject } from "@mkseo/ai/human-eval";
+
+const client = createModelClient({
+  model: loadPreset("omlx"),
+  fetch: globalThis.fetch,
+});
+
+// The prompt being tuned. Edit it, run generate again, then compare.
+const instructions = "Summarize the note in one short sentence.";
+
+/** One prompt, one voice: the smallest human evaluation project. */
+export const project: HumanEvalProject = {
+  cases: [
+    { id: "train", split: "tuning", labels: {}, context: "Train at 9:30." },
+    { id: "rent", split: "tuning", labels: {}, context: "Rent up 5% in May." },
+    { id: "party", split: "heldout", labels: {}, context: "Party Sat 7pm." },
+  ],
+  voices: () => [{ name: "summary", labels: {} }],
+  generate: ({ case: note }) =>
+    client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
+  checks: [
+    {
+      id: "one-sentence",
+      description: "More than one sentence.",
+      violates: (output) => /[.!?]\s+\S/.test(output.text),
+    },
+  ],
+  groupLabel: null,
+};
+```
+
+The entry ([tune-note-summary.ts](examples/tune-note-summary.ts)) passes the
+command line through:
+
+```ts
+import { runHumanEvalCli } from "@mkseo/ai/human-eval";
+import { project } from "./note-summary-project.ts";
+
+await runHumanEvalCli(project, process.argv.slice(2));
+```
+
+```sh
+pnpm tune-example generate --out /tmp/notes/before
+# edit the instructions
+pnpm tune-example generate --out /tmp/notes/after
+pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after --out /tmp/notes/round-1
+pnpm tune-example choose --out /tmp/notes/round-1 --reply="1 r, 2 r long"
+```
+
+Every `--out` must be a new or empty folder. Tags are single words. Pass a reply
+joined to the flag with `=`, as above, so a reply that starts with `-` is not
+read as an option; the [agent guide](src/human-eval/AGENT-GUIDE.md) shows how to
+pass any reply safely.
+
+With one voice, `guess` and `judge --kind lineup` refuse with a one-line
+message, and overlap has nothing to compare.
+
+### Several voices
+
+Only the voices change when one prompt responds in several tones. Each case gets
+every voice; with `groupLabel: null`, lineup, guess, and overlap compare all
+voices that responded to a case:
+
+```ts
+const tones = ["formal", "casual", "playful"];
+
+export const project: HumanEvalProject = {
+  // cases and checks as above
+  voices: () => tones.map((tone) => ({ name: tone, labels: {} })),
+  generate: ({ case: note, voice }) =>
+    client.text({
+      instructions: `${instructions} Use a ${voice.name} tone.`,
+      prompt: note.context,
+      maxOutputTokens: 128,
+    }),
+  groupLabel: null,
+};
+```
+
+With many voices, give each a label such as `{ group: "calm" }` and set
+`groupLabel: "group"`, so lineup, guess, and overlap stay within a group. A
+project with its own case fields writes `HumanEvalProject<MyCase>`, and
+`generate` receives those fields back.
 
 ## Expo and editable consumption
 

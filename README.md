@@ -5,7 +5,8 @@ Independent Python and TypeScript packages for configured model access.
 - [Python](python/README.md): PydanticAI provider configuration and evaluation
   records, managed with uv.
 - [TypeScript](typescript/README.md): text and validated object generation for
-  oMLX and LM Studio, managed with pnpm.
+  oMLX and LM Studio, plus human evaluation by blind comparisons, managed with
+  pnpm.
 - [Product overview](prd/overview.md): capabilities and responsibility map.
 
 Each language package owns its dependencies, runtime, tests, and distribution.
