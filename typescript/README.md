@@ -132,8 +132,8 @@ model-client retries.
 person picks between the model's outputs; no model ever judges. It runs in Node
 only, so the main `@mkseo/ai` entry does not load it.
 
-A project describes its cases, voices, model call, and checks, and passes them
-to `runHumanEvalCli`. That gives it the commands `generate`, `judge`, `guess`,
+A project describes its cases, voices, and model call, and passes them to
+`runHumanEvalCli`. That gives it the commands `generate`, `judge`, `guess`,
 `show`, and `choose`. Each runs once and exits; none waits for key presses, so
 an agent can run them and relay pages and replies in a chat.
 [AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation for
@@ -142,7 +142,7 @@ the agent that runs it. Each field is described in
 
 ### Tune your own prompt
 
-One prompt, one voice, three cases, and one check
+One prompt, one voice, and three cases
 ([note-summary-project.ts](examples/note-summary-project.ts)):
 
 ```ts
@@ -167,13 +167,6 @@ export const project: HumanEvalProject = {
   voices: () => [{ name: "summary", labels: {} }],
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
-  checks: [
-    {
-      id: "one-sentence",
-      description: "More than one sentence.",
-      violates: (output) => /[.!?]\s+\S/.test(output.text),
-    },
-  ],
   groupLabel: null,
 };
 ```
@@ -202,19 +195,19 @@ read as an option; the [agent guide](src/human-eval/AGENT-GUIDE.md) shows how to
 pass any reply safely.
 
 With one voice, `guess` and `judge --kind lineup` refuse with a one-line
-message, and overlap has nothing to compare.
+message.
 
 ### Several voices
 
 Only the voices change when one prompt responds in several tones. Each case gets
-every voice; with `groupLabel: null`, lineup, guess, and overlap compare all
-voices that responded to a case:
+every voice; with `groupLabel: null`, lineup and guess compare all voices that
+responded to a case:
 
 ```ts
 const tones = ["formal", "casual", "playful"];
 
 export const project: HumanEvalProject = {
-  // cases and checks as above
+  // cases as above
   voices: () => tones.map((tone) => ({ name: tone, labels: {} })),
   generate: ({ case: note, voice }) =>
     client.text({
@@ -227,9 +220,9 @@ export const project: HumanEvalProject = {
 ```
 
 With many voices, give each a label such as `{ group: "calm" }` and set
-`groupLabel: "group"`, so lineup, guess, and overlap stay within a group. A
-project with its own case fields writes `HumanEvalProject<MyCase>`, and
-`generate` receives those fields back.
+`groupLabel: "group"`, so lineup and guess stay within a group. A project with
+its own case fields writes `HumanEvalProject<MyCase>`, and `generate` receives
+those fields back.
 
 ## Expo and editable consumption
 

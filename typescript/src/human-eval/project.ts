@@ -1,5 +1,5 @@
-// What a project gives the human evaluation tools: its cases, voices,
-// model call, and checks, plus the output type checks read.
+// What a project gives the human evaluation tools: its cases, voices, and
+// model call, plus the output type an output set holds.
 
 /** Label names and values; e.g. { group: 'calm', task: 'reply' }. */
 export type Labels = Readonly<Record<string, string>>;
@@ -50,16 +50,6 @@ export interface Output {
   readonly labels: Labels;
 }
 
-/** A rule that plain code can test on one output. No model is involved. */
-export interface Check {
-  /** Short, unique, stable name; e.g. 'too-long'. */
-  readonly id: string;
-  /** The rule in plain words; e.g. 'More than three sentences.'. */
-  readonly description: string;
-  /** Returns true when the output breaks the rule. */
-  readonly violates: (output: Output) => boolean;
-}
-
 /**
  * What a project gives the human evaluation tools. `C` is the project's own
  * case type, so `generate` gets back every field the project put on its
@@ -76,11 +66,9 @@ export interface HumanEvalProject<C extends HumanEvalCase = HumanEvalCase> {
     readonly case: C;
     readonly voice: Voice;
   }) => Promise<string>;
-  /** Rules plain code checks on every output. */
-  readonly checks: readonly Check[];
   /**
-   * Label that puts voices into groups for lineup, guess, and overlap; e.g.
-   * 'group'. Null when voices are not grouped, so all voices form one group.
+   * Label that puts voices into groups for lineup and guess; e.g. 'group'.
+   * Null when voices are not grouped, so all voices form one group.
    */
   readonly groupLabel: string | null;
 }

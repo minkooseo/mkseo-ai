@@ -3,7 +3,6 @@
 export { runHumanEvalCli } from "./cli/cli.ts";
 export type {
   Output,
-  Check,
   HumanEvalCase,
   HumanEvalProject,
   Labels,

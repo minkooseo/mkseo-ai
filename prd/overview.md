@@ -33,5 +33,5 @@ persistence, runtime lifecycle, and user-facing behavior.
   failures.
 - [Evaluation records](evaluation.md): Python coverage, attempt ownership,
   evidence, and outcome invariants.
-- [Human evaluation](human-eval.md): TypeScript output sets, checks, overlap,
-  blind rounds, and results decided by a person.
+- [Human evaluation](human-eval.md): TypeScript output sets, blind rounds, and
+  results decided by a person.

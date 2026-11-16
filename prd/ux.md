@@ -36,8 +36,7 @@ Each runs once, prints plain text, and exits, so an agent can relay pages and
 replies through a chat; nothing waits for key presses.
 
 - `generate --out <dir> [--split tuning|heldout] [--samples <n>]` makes an
-  output set and prints how many outputs it wrote, each check's rate, and the
-  most alike voices.
+  output set and prints how many outputs it wrote.
 - `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]` and
   `guess --outputs <dir> --out <dir> [--items <n>]` start a blind round and
   print its first page.

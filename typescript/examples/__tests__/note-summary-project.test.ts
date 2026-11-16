@@ -28,19 +28,9 @@ describe("note summary project", () => {
     await runHumanEvalCli(fakeModel("Meet at 9:15 for the 9:30 train."), [
       ...["generate", "--out", b],
     ]);
-    const summary = (dir: string, broken: string) =>
-      [
-        `Wrote 2 outputs to ${dir}.`,
-        "",
-        "Checks (outputs that break each rule):",
-        `  one-sentence: ${broken}. More than one sentence.`,
-        "",
-        "Overlap between voices (0 = nothing shared, 1 = the same text):",
-        "  Nothing to compare: no case has two voices in the same group.",
-      ].join("\n");
     expect(logged.slice(0, 2)).toEqual([
-      summary(a, "2 of 2 (100%)"),
-      summary(b, "0 of 2 (0%)"),
+      `Wrote 2 outputs to ${a}.`,
+      `Wrote 2 outputs to ${b}.`,
     ]);
 
     const judge = ["judge", "--kind", "pair", "--a", a, "--b", b];

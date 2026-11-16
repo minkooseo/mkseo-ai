@@ -4,9 +4,8 @@ This guide is for an agent that runs a human evaluation for a person. The person
 decides; no model ever judges. The project's own docs say how to start its
 command line. Below, `<cli>` stands for that command.
 
-An evaluation has four steps: **Produce** an output set, **Screen** it with
-automatic numbers, **Compare** it with the current best in a blind round, and
-**Confirm** a win on held-out cases.
+An evaluation has three steps: **Produce** an output set, **Compare** it with
+the current best in blind rounds, and **Confirm** a win on held-out cases.
 
 ## Terms
 
@@ -19,10 +18,6 @@ automatic numbers, **Compare** it with the current best in a blind round, and
   each.
 - **Output**: the model's text for one case, one voice, and one sample.
 - **Output set**: every output from one `generate` run, saved in one folder.
-- **Check**: a rule plain code tests on each output, such as "more than three
-  sentences".
-- **Overlap**: how alike different voices sound, from 0 (nothing shared) to 1
-  (the same text).
 - **Round**: the items shown in one comparison. Items never say which output set
   an output came from.
 - **Item**: one thing to decide in a round, numbered from 1.
@@ -37,50 +32,39 @@ automatic numbers, **Compare** it with the current best in a blind round, and
 ```
 
 It runs every case of the split (default `tuning`) with every voice and writes
-into `<dir>`:
-
-- `outputs.jsonl`: the outputs.
-- `checks.json`: for each check, the share of outputs that break it, and those
-  outputs.
-- `overlap.json`: mean overlap overall and per voice pair. With one voice there
-  is nothing to compare.
+the outputs to `outputs.jsonl` in `<dir>`.
 
 `--out` must be a new or empty folder. If a model call fails, the command stops
 with an error naming the case and voice and writes nothing; fix the cause and
 run the same command again.
 
-## Screen
+## Compare
 
-Compare the new output set's numbers with the current best one's. By default,
-call the new one **clearly worse**, and do not take it to Compare, when any of
-these hold (a project may set its own limits):
+Compare the new output set (B) with the current best (A) in blind rounds that
+the person decides.
 
-- A check's rate rises by 5 percentage points or more, and at least 2 more
-  outputs break it.
-- The overall overlap mean goes up by at least 0.03.
-- Guess accuracy goes down by at least 10 points.
-
-Guess accuracy comes from a **guess round**. It is a measurement of one output
-set that the person makes, not a comparison of two. Run it only when voices
-should sound distinct, and at most once per output set you care about:
+When voices should sound distinct, first measure each side with a **guess
+round**: A if it has no guess result yet, then B. It is a measurement of one
+output set that the person makes, not a comparison of two. Run it at most once
+per output set you care about:
 
 ```sh
 <cli> guess --outputs <dir> --out <round-dir> [--items <n>]
 ```
 
-Its result gives accuracy and which voice was taken for which. Use the accuracy
-like the automatic numbers above.
+Its result gives accuracy and which voice was taken for which. By default, when
+B's guess accuracy falls by 10 points or more from A's, call B **clearly worse**
+and do not run its pair round (a project may set its own limit).
 
-## Compare
-
-Start a blind round between the current best (A) and the new output set (B):
+Then start a blind round between A and B:
 
 ```sh
 <cli> judge --kind pair --a <dirA> --b <dirB> --out <round-dir> [--items <n>]
 ```
 
 - **pair**: one output from each set for the same case and voice. The person
-  says which is better. Always run this round.
+  says which is better. Always run this round unless the guess round found B
+  clearly worse.
 - **lineup** (`--kind lineup`): all voices of one group for one case, set A
   against set B. The person says which side sounds more like different people.
   When a change should make voices more distinct, run a lineup round in addition

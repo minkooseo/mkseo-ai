@@ -20,10 +20,10 @@ export interface OutputTask<C extends HumanEvalCase> {
 
 /**
  * List the model calls to make, in case order, then voice order, then
- * sample order. It checks the project before any model call: case ids,
- * voice names, and check ids must be nonblank and unique, a case and voice
- * must not set one label to different values, every voice must have the
- * group label when there is one, and there must be something to run.
+ * sample order. It checks the project before any model call: case ids and
+ * voice names must be nonblank and unique, a case and voice must not set one
+ * label to different values, every voice must have the group label when
+ * there is one, and there must be something to run.
  */
 export function planOutputs<C extends HumanEvalCase>({
   project,
@@ -37,10 +37,6 @@ export function planOutputs<C extends HumanEvalCase>({
   assertNamed(
     project.cases.map((testCase) => testCase.id),
     "Case ids",
-  );
-  assertNamed(
-    project.checks.map((check) => check.id),
-    "Check ids",
   );
   const cases = project.cases.filter((testCase) => testCase.split === split);
   if (cases.length === 0) {

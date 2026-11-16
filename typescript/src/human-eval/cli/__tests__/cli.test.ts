@@ -76,21 +76,11 @@ describe("runHumanEvalCli with a single voice", () => {
     groupLabel: null,
   });
 
-  it("generates outputs; one voice has nothing to compare", async () => {
+  it("generates outputs for the tuning cases", async () => {
     const out = join(work, "run");
     await runHumanEvalCli(project, ["generate", "--out", out]);
     expect(process.exitCode).toBeUndefined();
-    expect(logged).toEqual([
-      [
-        `Wrote 2 outputs to ${out}.`,
-        "",
-        "Checks (outputs that break each rule):",
-        "  shout: 1 of 2 (50%). Has an exclamation mark.",
-        "",
-        "Overlap between voices (0 = nothing shared, 1 = the same text):",
-        "  Nothing to compare: no case has two voices in the same group.",
-      ].join("\n"),
-    ]);
+    expect(logged).toEqual([`Wrote 2 outputs to ${out}.`]);
     expect(await readOutputs(out)).toEqual([
       {
         caseId: "late-train",
@@ -234,30 +224,6 @@ describe("runHumanEvalCli with several voices", () => {
     { name: "casual", labels: { group: "calm" } },
     { name: "plain", labels: { group: "loud" } },
   ];
-
-  it("compares voices within a group when voices are grouped", async () => {
-    const out = join(work, "run");
-    await runHumanEvalCli(projectWith({ voices, groupLabel: "group" }), [
-      "generate",
-      "--out",
-      out,
-    ]);
-    expect(await voicePairs(out)).toEqual([["casual", "formal"]]);
-  });
-
-  it("compares all voices when voices are not grouped", async () => {
-    const out = join(work, "run");
-    await runHumanEvalCli(projectWith({ voices, groupLabel: null }), [
-      "generate",
-      "--out",
-      out,
-    ]);
-    expect((await voicePairs(out)).sort()).toEqual([
-      ["casual", "formal"],
-      ["casual", "plain"],
-      ["formal", "plain"],
-    ]);
-  });
 
   it("runs a lineup round within each group", async () => {
     // With 0 every shuffle keeps its order and set A goes on the left.
@@ -432,11 +398,7 @@ describe("runHumanEvalCli generate", () => {
     expect(await readdir(work)).toEqual([]);
 
     await runHumanEvalCli(working, ["generate", "--out", out]);
-    expect(await readdir(out)).toEqual([
-      "checks.json",
-      "outputs.jsonl",
-      "overlap.json",
-    ]);
+    expect(await readdir(out)).toEqual(["outputs.jsonl"]);
   });
 
   it("does not start queued calls after a failure", async () => {
@@ -507,20 +469,6 @@ function projectWith({
         `${voice.name} on ${testCase.id}` +
           (testCase.id === "late-train" ? "!" : "."),
       ),
-    checks: [
-      {
-        id: "shout",
-        description: "Has an exclamation mark.",
-        violates: (output) => output.text.includes("!"),
-      },
-    ],
     groupLabel,
   };
-}
-
-async function voicePairs(out: string): Promise<string[][]> {
-  const overlap = JSON.parse(
-    await readFile(join(out, "overlap.json"), "utf8"),
-  ) as { voicePairs: { voices: string[] }[] };
-  return overlap.voicePairs.map((pair) => pair.voices);
 }

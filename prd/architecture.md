@@ -102,16 +102,15 @@ files may be imported by any folder, and only `human-eval.ts` imports `cli/`.
 
 - Top level: `human-eval.ts` is the entry, with `runHumanEvalCli` and the public
   types. `project.ts` defines what a project supplies: cases, voices, the model
-  call, checks, and the output and label types. `file-io.ts` reads and checks
-  JSON, writes files whole through a temporary file, and refuses an `--out`
-  folder that is not empty; `group-by.ts` groups items by a key;
-  `usage-error.ts` marks problems the person can fix. `AGENT-GUIDE.md` ships
-  with the package and tells an agent how to run an evaluation.
-- `outputs/` produces and measures an output set. `plan.ts` checks the project
-  and lists the model calls; `generate.ts` makes them through the shared
-  `ConcurrencyGate` and saves the files; `summary.ts` describes the run;
-  `output.ts` owns `outputs.jsonl` and matches two output sets; `checks.ts` runs
-  code checks; `overlap.ts` measures 3-gram overlap between voices.
+  call, and the output and label types. `file-io.ts` reads and checks JSON,
+  writes files whole through a temporary file, and refuses an `--out` folder
+  that is not empty; `group-by.ts` groups items by a key; `usage-error.ts` marks
+  problems the person can fix. `AGENT-GUIDE.md` ships with the package and tells
+  an agent how to run an evaluation.
+- `outputs/` produces an output set. `plan.ts` checks the project and lists the
+  model calls; `generate.ts` makes them through the shared `ConcurrencyGate` and
+  saves the outputs; `output.ts` owns `outputs.jsonl` and matches two output
+  sets.
 - `round/` is what the person is shown. `round.ts` owns the saved round schema;
   `items.ts` draws pair, lineup, and guess items with `spread-pick.ts`;
   `page.ts` writes a page as Markdown.

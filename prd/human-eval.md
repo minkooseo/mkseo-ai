@@ -2,14 +2,15 @@
 
 The TypeScript package helps a person tune what a program sends to a model, such
 as a prompt or speaker settings, by blind A/B comparisons. A person always
-decides; the library never asks a model to judge. It runs in Node only and is
-kept apart from the generation entry that Expo apps load. The commands a person
-or agent runs are in [Developer UX](ux.md).
+decides; the library never asks a model to judge and computes no score over
+outputs. It runs in Node only and is kept apart from the generation entry that
+Expo apps load. The commands a person or agent runs are in
+[Developer UX](ux.md).
 
 ## Projects
 
-A project gives the library its cases, voices, model call, checks, and an
-optional grouping label. One short file is enough for a single prompt.
+A project gives the library its cases, voices, model call, and an optional
+grouping label. One short file is enough for a single prompt.
 
 - A **case** is one fixed input with a unique id, a split, free-text context,
   and labels. The context is what the person reads to understand the case, so it
@@ -20,7 +21,6 @@ optional grouping label. One short file is enough for a single prompt.
   project returns one.
 - The **model call** is a plain function that returns the output text for one
   case and voice. It may carry the project's own case fields.
-- A **check** is a rule plain code tests on one output, never a model.
 - The **group label** names the label that puts voices into groups. When it is
   absent, all voices that responded to a case form one group.
 
@@ -40,19 +40,9 @@ voice. Nothing is written, so the same command can simply run again. Every
 command that creates files takes a new or empty folder, so nothing is ever
 overwritten or mixed.
 
-Before the first model call, the project is checked: case ids, voice names, and
-check ids must be nonblank and unique, and every voice must have the group label
-when there is one.
-
-## Automatic measures
-
-- **Checks** report, per rule, the share of outputs that break it and those
-  outputs.
-- **Overlap** compares, within each case and group, every pair of outputs from
-  different voices using character 3-gram Jaccard similarity, which works for
-  any language. It reports the overall mean and the mean per voice pair. Text
-  shorter than three characters counts as one gram. With no pairs to compare
-  there is no mean.
+Before the first model call, the project is checked: case ids and voice names
+must be nonblank and unique, and every voice must have the group label when
+there is one.
 
 ## Rounds
 
@@ -105,10 +95,8 @@ writes the result first if it is missing.
   value.
 - Guess gives accuracy and how often each real voice was taken for each voice.
 
-The package ships an agent guide, organized as produce, screen, compare, and
-confirm. It suggests default limits: an output set is clearly worse when a
-check's rate rises by 5 percentage points or more and at least 2 more outputs
-break it, the overlap mean rises by at least 0.03, or guess accuracy falls by at
-least 10 points; the new side wins with more wins than losses and a p-value of
-at most 0.05, and a win is confirmed by a pair round on held-out cases. Projects
-may choose other limits.
+The package ships an agent guide, organized as produce, compare, and confirm. It
+suggests default limits: an output set is clearly worse, and skips its pair
+round, when its guess accuracy falls by at least 10 points; the new side wins
+with more wins than losses and a p-value of at most 0.05, and a win is confirmed
+by a pair round on held-out cases. Projects may choose other limits.

@@ -18,7 +18,6 @@ const project: HumanEvalProject = {
     { name: "casual", labels: { group: "loud" } },
   ],
   generate: () => Promise.resolve("Unused."),
-  checks: [],
   groupLabel: "group",
 };
 
@@ -73,15 +72,6 @@ describe("planOutputs", () => {
     {
       change: { cases: [{ ...firstCase(), id: " " }] },
       message: "Case ids must not be blank.",
-    },
-    {
-      change: {
-        checks: [
-          { id: "short", description: "Short.", violates: () => false },
-          { id: "short", description: "Short.", violates: () => false },
-        ],
-      },
-      message: "Check ids must be unique; repeated: short.",
     },
     {
       change: { voices: () => [{ name: "", labels: { group: "calm" } }] },

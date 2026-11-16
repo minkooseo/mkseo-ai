@@ -19,12 +19,5 @@ export const project: HumanEvalProject = {
   voices: () => [{ name: "summary", labels: {} }],
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
-  checks: [
-    {
-      id: "one-sentence",
-      description: "More than one sentence.",
-      violates: (output) => /[.!?]\s+\S/.test(output.text),
-    },
-  ],
   groupLabel: null,
 };
