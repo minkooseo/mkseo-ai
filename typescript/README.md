@@ -186,7 +186,8 @@ await runHumanEvalCli(project, process.argv.slice(2));
 pnpm tune-example generate --out /tmp/notes/before
 # edit the instructions
 pnpm tune-example generate --out /tmp/notes/after
-pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after --out /tmp/notes/round-1
+pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after \
+  --out /tmp/notes/round-1
 pnpm tune-example choose --out /tmp/notes/round-1 --reply="1 r, 2 r long"
 ```
 

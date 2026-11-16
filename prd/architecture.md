@@ -14,7 +14,7 @@ TypeScript caller -> client factory -> generation -> compatible transport
                                            |                 |
                                  schema contract + retry  oMLX / LM Studio
 
-TypeScript project -> human-eval command line -> session -> choices -> round -> outputs
+TypeScript project -> human-eval CLI -> session -> choices -> round -> outputs
 ```
 
 ## Python package

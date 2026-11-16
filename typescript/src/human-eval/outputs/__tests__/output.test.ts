@@ -1,6 +1,18 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Output } from "../../project.ts";
-import { matchSets } from "../output.ts";
+import { matchSets, readOutputs } from "../output.ts";
+
+describe("readOutputs", () => {
+  it("rejects an empty output set", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "human-eval-"));
+    const path = join(dir, "outputs.jsonl");
+    await writeFile(path, "");
+    await expect(readOutputs(dir)).rejects.toThrow(`${path} holds no outputs.`);
+  });
+});
 
 describe("matchSets", () => {
   it("gives the B output for an A output of the same case and voice", () => {

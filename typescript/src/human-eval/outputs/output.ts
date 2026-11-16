@@ -31,8 +31,9 @@ export async function writeOutputs(
 }
 
 /**
- * Read the output set saved in `dir`. Throws when a line is not a valid
- * output or when two outputs share a case, voice, and sample.
+ * Read the output set saved in `dir`. Throws when the set is empty, when a
+ * line is not a valid output, or when two outputs share a case, voice, and
+ * sample.
  */
 export async function readOutputs(dir: string): Promise<Output[]> {
   const path = join(dir, outputsFile);
@@ -44,6 +45,9 @@ export async function readOutputs(dir: string): Promise<Output[]> {
   // must be empty; anything else means the file was cut short.
   if (lines.pop() !== "") {
     throw new UsageError(`${path} does not end with a newline.`);
+  }
+  if (lines.length === 0) {
+    throw new UsageError(`${path} holds no outputs.`);
   }
   const outputs = lines.map((line, index) =>
     parseJson({

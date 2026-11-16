@@ -110,6 +110,8 @@ async function drawRound(
     request.kind === "pair"
       ? pairItems({ a, b, itemLimit, random })
       : lineupItems({ a, b, groupLabel, itemLimit, random });
+  // Only lineup can draw no items: both sets hold outputs and itemLimit is
+  // at least 1, so pair always draws one.
   if (items.length === 0) {
     throw new UsageError(
       "Nothing to compare: lineup needs two or more voices responding to " +
