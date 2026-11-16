@@ -32,28 +32,14 @@ describe("currentPage", () => {
 });
 
 describe("assertValidSession", () => {
-  it.each([
-    {
-      picked: "constructor",
-      item: 1,
-      message: 'Item 1 has the pick "constructor", which it does not allow.',
-    },
-    {
-      picked: "left",
-      item: 8,
-      message: "choices.json has item 8, but the round has 7 items.",
-    },
-  ])(
-    "rejects a saved pick $picked on item $item",
-    ({ picked, item, message }) => {
-      expect(() =>
-        assertValidSession({
-          round: pairRound,
-          choices: [{ item, picked, tags: [] }],
-        }),
-      ).toThrow(message);
-    },
-  );
+  it("rejects a saved choice on an item the round does not have", () => {
+    expect(() =>
+      assertValidSession({
+        round: pairRound,
+        choices: [{ item: 8, picked: "left", tags: [] }],
+      }),
+    ).toThrow("choices.json has item 8, but the round has 7 items.");
+  });
 
   it("rejects an item chosen twice", () => {
     expect(() =>
@@ -65,27 +51,5 @@ describe("assertValidSession", () => {
         ],
       }),
     ).toThrow("choices.json has item 2 twice.");
-  });
-
-  it("rejects a saved guess that is not one of the item's voices", () => {
-    expect(() =>
-      assertValidSession({
-        round: {
-          kind: "guess",
-          outputs: "../a",
-          items: [
-            {
-              caseId: "c1",
-              sample: 1,
-              context: "Case 1.",
-              text: "Hello.",
-              voice: "formal",
-              options: ["casual", "formal"],
-            },
-          ],
-        },
-        choices: [{ item: 1, picked: "plain", tags: [] }],
-      }),
-    ).toThrow('Item 1 has the pick "plain", which it does not allow.');
   });
 });

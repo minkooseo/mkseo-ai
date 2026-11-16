@@ -13,10 +13,6 @@ import { readOutputs } from "../../outputs/output.ts";
 import type { HumanEvalProject, Voice } from "../../project.ts";
 import { runHumanEvalCli } from "../cli.ts";
 
-const nothingToCompare =
-  "Nothing to compare: lineup and guess need two or more voices " +
-  "responding to the same case in the same group.";
-
 const item1 = [
   "### Item 1 of 2",
   "Case:",
@@ -196,15 +192,6 @@ describe("runHumanEvalCli with a single voice", () => {
     ]);
   });
 
-  it("refuses guess in one plain line", async () => {
-    const run = join(work, "run");
-    await runHumanEvalCli(project, ["generate", "--out", run]);
-    const out = join(work, "round");
-    await runHumanEvalCli(project, ["guess", "--outputs", run, "--out", out]);
-    expect(errors).toEqual([nothingToCompare]);
-    expect(process.exitCode).toBe(1);
-  });
-
   it("refuses a lineup in one plain line", async () => {
     const run = join(work, "run");
     await runHumanEvalCli(project, ["generate", "--out", run]);
@@ -213,7 +200,10 @@ describe("runHumanEvalCli with a single voice", () => {
       ...["judge", "--kind", "lineup", "--a", run, "--b", run],
       ...["--out", out],
     ]);
-    expect(errors).toEqual([nothingToCompare]);
+    expect(errors).toEqual([
+      "Nothing to compare: lineup needs two or more voices responding to " +
+        "the same case in the same group.",
+    ]);
     expect(process.exitCode).toBe(1);
   });
 });
@@ -291,41 +281,6 @@ describe("runHumanEvalCli with several voices", () => {
       ].join("\n"),
     ]);
   });
-
-  it("runs a guess round across all voices when not grouped", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const project = projectWith({ voices, groupLabel: null });
-    const run = join(work, "run");
-    const out = join(work, "round");
-    await runHumanEvalCli(project, ["generate", "--out", run]);
-    await runHumanEvalCli(project, ["guess", "--outputs", run, "--out", out]);
-    logged = [];
-    await runHumanEvalCli(project, [
-      ...["choose", "--out", out, "--reply=1 2, 2 1, 3 3, 4 1, 5 1"],
-    ]);
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply=6 3"]);
-    expect(logged).toEqual([
-      [
-        "### Item 6 of 6",
-        "Case:",
-        "> I lost my keys.",
-        "Output:",
-        "> plain on lost-keys.",
-        "Which voice wrote it? 1 = casual, 2 = formal, 3 = plain",
-        "Reply with one line per item: the item number, then the number " +
-          "of the voice you think wrote it. Example: 6 2",
-      ].join("\n\n"),
-      [
-        "Guess round, 6 choices on ../run",
-        "Right 5 times (83%).",
-        "",
-        "Guesses for each real voice (real voice: guessed voice count):",
-        "  casual: casual 2",
-        "  formal: casual 1, formal 1",
-        "  plain: plain 2",
-      ].join("\n"),
-    ]);
-  });
 });
 
 describe("runHumanEvalCli options", () => {
@@ -344,7 +299,10 @@ describe("runHumanEvalCli options", () => {
       message: '--split must be tuning or heldout, not "dev".',
     },
     {
-      argv: ["guess", "--outputs", "x", "--out", "z", "--items", "0"],
+      argv: [
+        ...["judge", "--kind", "pair", "--a", "x", "--b", "y", "--out", "z"],
+        ...["--items", "0"],
+      ],
       message: "--items must be a whole number of 1 or more.",
     },
   ])("refuses $argv in one line", async ({ argv, message }) => {
@@ -356,7 +314,8 @@ describe("runHumanEvalCli options", () => {
   it("names a folder that holds no output set", async () => {
     const missing = join(work, "missing");
     await runHumanEvalCli(project, [
-      ...["guess", "--outputs", missing, "--out", join(work, "round")],
+      ...["judge", "--kind", "pair", "--a", missing, "--b", missing],
+      ...["--out", join(work, "round")],
     ]);
     expect(errors).toEqual([`${missing} holds no output set.`]);
   });

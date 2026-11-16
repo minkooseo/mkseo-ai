@@ -15,7 +15,6 @@ export const usage = `Commands:
            [--samples <n, default ${defaultSamples}>]
   judge --kind pair|lineup --a <dir> --b <dir> --out <dir>
         [--items <n, default ${defaultItems}>]
-  guess --outputs <dir> --out <dir> [--items <n, default ${defaultItems}>]
   show --out <dir>
   choose --out <dir> --reply="<the person's words>"`;
 
@@ -56,24 +55,6 @@ export function parseJudge(args: readonly string[]): RoundRequest {
     kind,
     a: resolve(required(values.a, "--a")),
     b: resolve(required(values.b, "--b")),
-    itemLimit: positiveInteger(values.items, "--items"),
-    out: resolve(required(values.out, "--out")),
-  };
-}
-
-/** Read the `guess` options. */
-export function parseGuess(args: readonly string[]): RoundRequest {
-  const { values } = parseArgs({
-    args: [...args],
-    options: {
-      outputs: { type: "string" },
-      out: { type: "string" },
-      items: { type: "string", default: defaultItems },
-    },
-  });
-  return {
-    kind: "guess",
-    outputs: resolve(required(values.outputs, "--outputs")),
     itemLimit: positiveInteger(values.items, "--items"),
     out: resolve(required(values.out, "--out")),
   };

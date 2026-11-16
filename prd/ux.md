@@ -37,22 +37,21 @@ replies through a chat; nothing waits for key presses.
 
 - `generate --out <dir> [--split tuning|heldout] [--samples <n>]` makes an
   output set and prints how many outputs it wrote.
-- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]` and
-  `guess --outputs <dir> --out <dir> [--items <n>]` start a blind round and
-  print its first page.
+- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]`
+  starts a blind round and prints its first page.
 - `show --out <dir>` prints the current page again, or, for a finished round,
   where its result is.
 - `choose --out <dir> --reply="<words>"` records the person's reply and prints
   the next page, or the result when the round is done.
 
 A page is Markdown meant to be pasted unchanged: numbered items with the case
-context, then the outputs under Left and Right, or numbered voices to pick from,
-and one closing line on how to reply, for example `3 l stiff`. Problems the
-person can fix, such as a folder that is not empty, a bad reply, or a round with
-nothing to compare, print one plain line and end with a failing exit code; bugs
-keep their stack trace. A failed model call stops `generate` with an error that
-names the case and voice, and nothing is written, so the same command can run
-again. [Human evaluation](human-eval.md) owns the rules.
+context, then the outputs under Left and Right, and one closing line on how to
+reply, for example `3 l stiff`. Problems the person can fix, such as a folder
+that is not empty, a bad reply, or a round with nothing to compare, print one
+plain line and end with a failing exit code; bugs keep their stack trace. A
+failed model call stops `generate` with an error that names the case and voice,
+and nothing is written, so the same command can run again.
+[Human evaluation](human-eval.md) owns the rules.
 
 ## Editable development
 

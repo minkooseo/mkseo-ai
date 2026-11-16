@@ -129,13 +129,14 @@ model-client retries.
 ## Human evaluation
 
 `@mkseo/ai/human-eval` helps a person tune a prompt by blind A/B comparisons. A
-person picks between the model's outputs; no model ever judges. It runs in Node
-only, so the main `@mkseo/ai` entry does not load it.
+person, or an agent standing in for them, picks between the model's outputs; the
+library never scores an output or picks a side. It runs in Node only, so the
+main `@mkseo/ai` entry does not load it.
 
 A project describes its cases, voices, and model call, and passes them to
-`runHumanEvalCli`. That gives it the commands `generate`, `judge`, `guess`,
-`show`, and `choose`. Each runs once and exits; none waits for key presses, so
-an agent can run them and relay pages and replies in a chat.
+`runHumanEvalCli`. That gives it the commands `generate`, `judge`, `show`, and
+`choose`. Each runs once and exits; none waits for key presses, so an agent can
+run them and relay pages and replies in a chat.
 [AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation for
 the agent that runs it. Each field is described in
 [project.ts](src/human-eval/project.ts).
@@ -194,13 +195,12 @@ joined to the flag with `=`, as above, so a reply that starts with `-` is not
 read as an option; the [agent guide](src/human-eval/AGENT-GUIDE.md) shows how to
 pass any reply safely.
 
-With one voice, `guess` and `judge --kind lineup` refuse with a one-line
-message.
+With one voice, `judge --kind lineup` refuses with a one-line message.
 
 ### Several voices
 
 Only the voices change when one prompt responds in several tones. Each case gets
-every voice; with `groupLabel: null`, lineup and guess compare all voices that
+every voice; with `groupLabel: null`, a lineup compares all voices that
 responded to a case:
 
 ```ts
@@ -220,9 +220,9 @@ export const project: HumanEvalProject = {
 ```
 
 With many voices, give each a label such as `{ group: "calm" }` and set
-`groupLabel: "group"`, so lineup and guess stay within a group. A project with
-its own case fields writes `HumanEvalProject<MyCase>`, and `generate` receives
-those fields back.
+`groupLabel: "group"`, so a lineup stays within a group. A project with its own
+case fields writes `HumanEvalProject<MyCase>`, and `generate` receives those
+fields back.
 
 ## Expo and editable consumption
 

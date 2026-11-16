@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Output } from "../../project.ts";
-import { guessItems, lineupItems, pairItems } from "../items.ts";
+import { lineupItems, pairItems } from "../items.ts";
 
 // With 0 every shuffle keeps its order and set A goes on the left.
 const keepOrder = () => 0;
@@ -98,67 +98,6 @@ describe("lineupItems", () => {
       lineupItems({
         a: single,
         b: single,
-        groupLabel: null,
-        itemLimit: 10,
-        random: keepOrder,
-      }),
-    ).toEqual([]);
-  });
-});
-
-describe("guessItems", () => {
-  const outputs = [
-    output({ caseId: "c1", voice: "formal", group: "x", text: "A1" }),
-    output({ caseId: "c1", voice: "casual", group: "x", text: "A2" }),
-    output({ caseId: "c1", voice: "plain", group: "y", text: "A3" }),
-  ];
-
-  it("offers the voices of the same case and group", () => {
-    expect(
-      guessItems({
-        outputs,
-        groupLabel: "group",
-        itemLimit: 10,
-        random: keepOrder,
-      }),
-    ).toEqual([
-      {
-        caseId: "c1",
-        sample: 1,
-        context: "Case c1.",
-        text: "A1",
-        voice: "formal",
-        options: ["casual", "formal"],
-      },
-      {
-        caseId: "c1",
-        sample: 1,
-        context: "Case c1.",
-        text: "A2",
-        voice: "casual",
-        options: ["casual", "formal"],
-      },
-    ]);
-  });
-
-  it("offers every voice of the case when voices are not grouped", () => {
-    const items = guessItems({
-      outputs,
-      groupLabel: null,
-      itemLimit: 10,
-      random: keepOrder,
-    });
-    expect(items.map((item) => [item.voice, item.options])).toEqual([
-      ["formal", ["casual", "formal", "plain"]],
-      ["casual", ["casual", "formal", "plain"]],
-      ["plain", ["casual", "formal", "plain"]],
-    ]);
-  });
-
-  it("has nothing to show for a single voice", () => {
-    expect(
-      guessItems({
-        outputs: [output({ caseId: "c1", voice: "formal", text: "A" })],
         groupLabel: null,
         itemLimit: 10,
         random: keepOrder,

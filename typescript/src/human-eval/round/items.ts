@@ -1,8 +1,8 @@
-// Draw the items of a pair, lineup, or guess round from output sets.
+// Draw the items of a pair or lineup round from output sets.
 import { groupBy } from "../group-by.ts";
 import { groupOf, matchSets } from "../outputs/output.ts";
 import type { Labels, Output } from "../project.ts";
-import type { GuessItem, SideItem, VoiceOutput } from "./round.ts";
+import type { RoundItem, VoiceOutput } from "./round.ts";
 import { spreadPick } from "./spread-pick.ts";
 
 interface ItemRequest {
@@ -24,7 +24,7 @@ export function pairItems({
 }: ItemRequest & {
   readonly a: readonly Output[];
   readonly b: readonly Output[];
-}): SideItem[] {
+}): RoundItem[] {
   const partnerOf = matchSets(a, b);
   const picked = spreadPick({
     candidates: a,
@@ -59,7 +59,7 @@ export function lineupItems({
   readonly a: readonly Output[];
   readonly b: readonly Output[];
   readonly groupLabel: string | null;
-}): SideItem[] {
+}): RoundItem[] {
   const partnerOf = matchSets(a, b);
   const lineups = [
     ...groupBy(a, (output) =>
@@ -90,50 +90,6 @@ export function lineupItems({
   );
 }
 
-/**
- * Build guess items from one output set: each shows one output with no
- * name and offers the voices that responded to the same case in the same
- * group. Outputs with no other voice in their group are skipped. Items are
- * spread evenly across voices.
- */
-export function guessItems({
-  outputs,
-  groupLabel,
-  itemLimit,
-  random,
-}: ItemRequest & {
-  readonly outputs: readonly Output[];
-  readonly groupLabel: string | null;
-}): GuessItem[] {
-  const sameCaseAndGroup = (output: Output) =>
-    JSON.stringify([output.caseId, groupOf(output, groupLabel)]);
-  const voicesOf = new Map(
-    [...groupBy(outputs, sameCaseAndGroup)].map(([key, group]) => [
-      key,
-      [...new Set(group.map((output) => output.voice))].sort(),
-    ]),
-  );
-  const options = (output: Output) => {
-    const voices = voicesOf.get(sameCaseAndGroup(output));
-    if (voices === undefined) throw new Error("Every output has a group.");
-    return voices;
-  };
-  const picked = spreadPick({
-    candidates: outputs.filter((output) => options(output).length >= 2),
-    spreadBy: (output) => output.voice,
-    itemLimit,
-    random,
-  });
-  return picked.map((output) => ({
-    caseId: output.caseId,
-    sample: output.sample,
-    context: output.context,
-    text: output.text,
-    voice: output.voice,
-    options: options(output),
-  }));
-}
-
 interface SidePair {
   /**
    * One output of the item, read for the case, sample, and context all its
@@ -149,7 +105,7 @@ interface SidePair {
 function drawSides(
   pairs: readonly SidePair[],
   random: () => number,
-): SideItem[] {
+): RoundItem[] {
   return pairs.map(({ first, a, b, labels }) => {
     const leftSet = random() < 0.5 ? "a" : "b";
     return {

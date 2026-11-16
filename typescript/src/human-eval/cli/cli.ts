@@ -6,7 +6,6 @@ import { UsageError } from "../usage-error.ts";
 import {
   parseChoose,
   parseGenerate,
-  parseGuess,
   parseJudge,
   parseShow,
   usage,
@@ -51,8 +50,6 @@ async function runCommand<C extends HumanEvalCase>(
       return runGenerate(project, parseGenerate(args));
     case "judge":
       return runNewRound(parseJudge(args), project.groupLabel);
-    case "guess":
-      return runNewRound(parseGuess(args), project.groupLabel);
     case "show":
       return runShow(parseShow(args));
     case "choose":

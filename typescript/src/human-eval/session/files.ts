@@ -16,7 +16,7 @@ const resultFile = "result.json";
 /** Read the session saved in `dir`. Throws when it holds no round. */
 export async function readSession(dir: string): Promise<Session> {
   if (!(await exists(join(dir, roundFile)))) {
-    throw new UsageError(`${dir} holds no round. Run judge or guess first.`);
+    throw new UsageError(`${dir} holds no round. Run judge first.`);
   }
   const session = {
     round: await readJson(join(dir, roundFile), roundSchema),

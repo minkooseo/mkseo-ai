@@ -72,29 +72,4 @@ describe("formatResult", () => {
       ].join("\n"),
     );
   });
-
-  it("describes a guess result", () => {
-    expect(
-      formatResult({
-        kind: "guess",
-        outputs: "../a",
-        choices: 4,
-        correct: 3,
-        accuracy: 0.75,
-        confusion: {
-          plain: { plain: 2 },
-          formal: { formal: 1, casual: 1 },
-        },
-      }),
-    ).toBe(
-      [
-        "Guess round, 4 choices on ../a",
-        "Right 3 times (75%).",
-        "",
-        "Guesses for each real voice (real voice: guessed voice count):",
-        "  formal: casual 1, formal 1",
-        "  plain: plain 2",
-      ].join("\n"),
-    );
-  });
 });

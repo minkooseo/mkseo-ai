@@ -67,7 +67,7 @@ export interface HumanEvalProject<C extends HumanEvalCase = HumanEvalCase> {
     readonly voice: Voice;
   }) => Promise<string>;
   /**
-   * Label that puts voices into groups for lineup and guess; e.g. 'group'.
+   * Label that puts voices into groups for lineup; e.g. 'group'.
    * Null when voices are not grouped, so all voices form one group.
    */
   readonly groupLabel: string | null;

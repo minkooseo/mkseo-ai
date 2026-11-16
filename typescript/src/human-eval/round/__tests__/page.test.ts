@@ -46,20 +46,28 @@ describe("formatPage", () => {
     );
   });
 
-  it("offers numbered voices for a guess item", () => {
+  it("quotes a lineup item and asks for the more varied side", () => {
     expect(
       formatPage({
         round: {
-          kind: "guess",
-          outputs: "/runs/a",
+          kind: "lineup",
+          a: "/runs/a",
+          b: "/runs/b",
           items: [
             {
               caseId: "c1",
               sample: 1,
               context: "First line.\nSecond line.",
-              text: "Hello.",
-              voice: "formal",
-              options: ["casual", "formal"],
+              labels: {},
+              leftSet: "b",
+              left: [
+                { voice: "casual", text: "Hey." },
+                { voice: "formal", text: "Hello." },
+              ],
+              right: [
+                { voice: "casual", text: "Hi." },
+                { voice: "formal", text: "Good day." },
+              ],
             },
           ],
         },
@@ -70,11 +78,19 @@ describe("formatPage", () => {
         "### Item 1 of 1",
         "Case:",
         "> First line.\n> Second line.",
-        "Output:",
+        "**Left**",
+        "*casual*",
+        "> Hey.",
+        "*formal*",
         "> Hello.",
-        "Which voice wrote it? 1 = casual, 2 = formal",
-        "Reply with one line per item: the item number, then the number of " +
-          "the voice you think wrote it. Example: 1 2",
+        "**Right**",
+        "*casual*",
+        "> Hi.",
+        "*formal*",
+        "> Good day.",
+        "Reply with the item number, then l or r for the side that sounds " +
+          "more like different people, or t (tie), then any words about " +
+          "it. Example: 1 r",
       ].join("\n\n"),
     );
   });

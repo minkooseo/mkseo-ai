@@ -112,15 +112,15 @@ files may be imported by any folder, and only `human-eval.ts` imports `cli/`.
   saves the outputs; `output.ts` owns `outputs.jsonl` and matches two output
   sets.
 - `round/` is what the person is shown. `round.ts` owns the saved round schema;
-  `items.ts` draws pair, lineup, and guess items with `spread-pick.ts`;
-  `page.ts` writes a page as Markdown.
+  `items.ts` draws pair and lineup items with `spread-pick.ts`; `page.ts` writes
+  a page as Markdown.
 - `choices/` is what the person picked and what it adds up to. `choices.ts`
   parses replies; `result.ts` counts a finished round with `sign-test.ts`;
   `format-result.ts` describes the result.
 - `session/` is one comparison in progress: a round plus the choices so far.
   `session.ts` picks the current page and checks saved choices; `files.ts` reads
   and writes `round.json`, `choices.json`, and `result.json`; `commands.ts` runs
-  `judge`, `guess`, `show`, and `choose`.
+  `judge`, `show`, and `choose`.
 - `cli/` is the command line only: `cli.ts` sends each command to its code, and
   `options.ts` parses flags.
 

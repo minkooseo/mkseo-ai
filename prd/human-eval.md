@@ -1,10 +1,10 @@
 # Human evaluation
 
 The TypeScript package helps a person tune what a program sends to a model, such
-as a prompt or speaker settings, by blind A/B comparisons. A person always
-decides; the library never asks a model to judge and computes no score over
-outputs. It runs in Node only and is kept apart from the generation entry that
-Expo apps load. The commands a person or agent runs are in
+as a prompt or speaker settings, by blind A/B comparisons. Every decision is a
+person's, or an agent's standing in for the person; the library never scores an
+output or picks a side. It runs in Node only and is kept apart from the
+generation entry that Expo apps load. The commands a person or agent runs are in
 [Developer UX](ux.md).
 
 ## Projects
@@ -58,26 +58,22 @@ evenly across voices or groups.
   against the same voices from set B, on random sides. The person picks the side
   that sounds more like different people, or a tie. Groups with one voice are
   left out. It is run in addition to a pair round, never instead of it.
-- **Guess**: one output from one set with no name. The person picks which voice
-  wrote it from the voices of the same case and group. Outputs with no other
-  voice in their group are left out. Guess measures one output set rather than
-  comparing two.
 
 A round with no items is refused with a one-line reason. The round stores the
 folders of the compared output sets relative to its own folder, so a saved round
-reads the same from any checkout. The round remembers which set is on which side
-and which voice wrote each guess output, but pages never show it.
+reads the same from any checkout. The round remembers which set is on which
+side, but pages never show it.
 
 ## Choices
 
 Everything is non-interactive: each step runs once, prints text, and exits, so
 an agent can relay pages and replies through a chat. Pages show the first items
-without a choice (five pair items, one lineup item, or five guess items),
-numbered across the whole round, as Markdown with the case context and the
-outputs. Each page ends with how to reply.
+without a choice (five pair items or one lineup item), numbered across the whole
+round, as Markdown with the case context and the outputs. Each page ends with
+how to reply.
 
-A reply lists one **choice** per line or after a comma: item number, the pick,
-and, for pair and lineup only, one-word tags. A tag that is a number or a pick
+A reply lists one **choice** per line or after a comma: item number, the pick
+(left, right, or tie), and any one-word tags. A tag that is a number or a pick
 letter means two choices were run together, and the reply is refused. Letters
 may be any case. A reply that names an item not on the page, repeats an item, or
 has an unknown pick records nothing and gives a one-line reason. A reply may
@@ -90,13 +86,10 @@ When every item has a choice, the result is counted before anything is saved,
 then saved and shown. Showing a finished round says where its result is, and
 writes the result first if it is missing.
 
-- Pair and lineup give wins for A, wins for B, ties, the exact two-sided sign
-  test p-value with ties left out, and the same counts per tag and per label
-  value.
-- Guess gives accuracy and how often each real voice was taken for each voice.
+A result gives wins for A, wins for B, ties, the exact two-sided sign test
+p-value with ties left out, and the same counts per tag and per label value.
 
 The package ships an agent guide, organized as produce, compare, and confirm. It
-suggests default limits: an output set is clearly worse, and skips its pair
-round, when its guess accuracy falls by at least 10 points; the new side wins
-with more wins than losses and a p-value of at most 0.05, and a win is confirmed
-by a pair round on held-out cases. Projects may choose other limits.
+suggests default limits: the new side wins with more wins than losses and a
+p-value of at most 0.05, and a win is confirmed by a pair round on held-out
+cases. Projects may choose other limits.
