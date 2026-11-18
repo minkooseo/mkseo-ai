@@ -1,5 +1,5 @@
-// An output set on disk: reading and writing outputs.jsonl, matching two
-// sets for a comparison, and finding an output's group.
+// An output set on disk: reading and writing outputs.jsonl, and matching
+// two sets for a comparison.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
@@ -12,11 +12,12 @@ export const labelsSchema = z.record(z.string(), z.string());
 // The fields are described on the Output type.
 const outputSchema: z.ZodType<Output> = z.strictObject({
   caseId: z.string().min(1),
-  voice: z.string().min(1),
+  speaker: z.string().min(1),
   sample: z.int().positive(),
   context: z.string(),
   text: z.string(),
   labels: labelsSchema,
+  speakerDescription: z.string().nullable(),
 });
 
 const outputsFile = "outputs.jsonl";
@@ -32,7 +33,7 @@ export async function writeOutputs(
 
 /**
  * Read the output set saved in `dir`. Throws when the set is empty, when a
- * line is not a valid output, or when two outputs share a case, voice, and
+ * line is not a valid output, or when two outputs share a case, speaker, and
  * sample.
  */
 export async function readOutputs(dir: string): Promise<Output[]> {
@@ -53,7 +54,7 @@ export async function readOutputs(dir: string): Promise<Output[]> {
     parseJson({
       text: line,
       schema: outputSchema,
-      where: `${path} line ${index + 1}`,
+      source: `${path} line ${index + 1}`,
     }),
   );
   indexOutputs(outputs);
@@ -61,11 +62,9 @@ export async function readOutputs(dir: string): Promise<Output[]> {
 }
 
 /**
- * Check that output sets A and B hold the same cases, voices, and samples,
- * with the same case text and labels, and throw a list of the differences
- * otherwise. A comparison only means something when both sets cover the
- * same cases, voices, and samples. Returns a function that gives the B
- * output matching an A output.
+ * Check that output sets A and B hold the same cases, speakers, samples,
+ * case text, and labels, and throw a list of the differences otherwise.
+ * Returns a function that finds the B output for an A output.
  */
 export function matchSets(
   a: readonly Output[],
@@ -90,42 +89,24 @@ export function matchSets(
   }
   if (problems.length > 0) {
     throw new UsageError(
-      "Output sets A and B must hold the same cases, voices, and samples:\n" +
+      "Output sets A and B must hold the same cases, speakers, and samples:\n" +
         problems.map((problem) => `  ${problem}`).join("\n"),
     );
   }
   return (output) => {
-    const partner = bByKey.get(outputKey(output));
-    if (partner === undefined) {
+    const bOutput = bByKey.get(outputKey(output));
+    if (bOutput === undefined) {
       throw new Error(
         `Output ${describeOutput(output)} is missing from set B.`,
       );
     }
-    return partner;
+    return bOutput;
   };
-}
-
-/**
- * The value of `groupLabel` on an output, or "" when voices are not grouped
- * (`groupLabel` is null). Throws when the output lacks the label.
- */
-export function groupOf(output: Output, groupLabel: string | null): string {
-  if (groupLabel === null) return "";
-  // Own labels only, so a name such as "constructor" is not found.
-  const value = Object.hasOwn(output.labels, groupLabel)
-    ? output.labels[groupLabel]
-    : undefined;
-  if (value === undefined) {
-    throw new UsageError(
-      `Output ${describeOutput(output)} has no "${groupLabel}" label.`,
-    );
-  }
-  return value;
 }
 
 /** A short name for an output in messages; e.g. 'late-train / formal / 1'. */
 function describeOutput(output: Output): string {
-  return `${output.caseId} / ${output.voice} / ${output.sample}`;
+  return `${output.caseId} / ${output.speaker} / ${output.sample}`;
 }
 
 function sameLabels(first: Labels, second: Labels): boolean {
@@ -134,9 +115,9 @@ function sameLabels(first: Labels, second: Labels): boolean {
   return sorted(first) === sorted(second);
 }
 
-/** A text key that is the same for outputs with equal case, voice, sample. */
+/** A text key that is the same for outputs with equal case, speaker, sample. */
 function outputKey(output: Output): string {
-  return JSON.stringify([output.caseId, output.voice, output.sample]);
+  return JSON.stringify([output.caseId, output.speaker, output.sample]);
 }
 
 /** Map each output's key to the output. Throws on a repeated key. */

@@ -2,21 +2,17 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { GenerateOptions } from "../outputs/generate.ts";
-import type { Split } from "../project.ts";
 import type { RoundRequest } from "../session/commands.ts";
 import { UsageError } from "../usage-error.ts";
 
-const defaultSplit = "tuning";
 const defaultSamples = "1";
 const defaultItems = "40";
 
 export const usage = `Commands:
-  generate --out <dir> [--split tuning|heldout, default ${defaultSplit}]
-           [--samples <n, default ${defaultSamples}>]
+  generate --out <dir> [--samples <n, default ${defaultSamples}>]
   judge --kind pair|lineup --a <dir> --b <dir> --out <dir>
         [--items <n, default ${defaultItems}>]
-  show --out <dir>
-  choose --out <dir> --reply="<the person's words>"`;
+  show --out <dir>`;
 
 /** Read the `generate` options. */
 export function parseGenerate(args: readonly string[]): GenerateOptions {
@@ -24,13 +20,11 @@ export function parseGenerate(args: readonly string[]): GenerateOptions {
     args: [...args],
     options: {
       out: { type: "string" },
-      split: { type: "string", default: defaultSplit },
       samples: { type: "string", default: defaultSamples },
     },
   });
   return {
     out: resolve(required(values.out, "--out")),
-    split: parseSplit(values.split),
     samples: positiveInteger(values.samples, "--samples"),
   };
 }
@@ -60,21 +54,6 @@ export function parseJudge(args: readonly string[]): RoundRequest {
   };
 }
 
-/** Read the `choose` options. */
-export function parseChoose(args: readonly string[]): {
-  readonly out: string;
-  readonly reply: string;
-} {
-  const { values } = parseArgs({
-    args: [...args],
-    options: { out: { type: "string" }, reply: { type: "string" } },
-  });
-  return {
-    out: resolve(required(values.out, "--out")),
-    reply: required(values.reply, "--reply"),
-  };
-}
-
 /** Read the `show` options: the round folder. */
 export function parseShow(args: readonly string[]): string {
   const { values } = parseArgs({
@@ -82,13 +61,6 @@ export function parseShow(args: readonly string[]): string {
     options: { out: { type: "string" } },
   });
   return resolve(required(values.out, "--out"));
-}
-
-function parseSplit(text: string): Split {
-  if (text !== "tuning" && text !== "heldout") {
-    throw new UsageError(`--split must be tuning or heldout, not "${text}".`);
-  }
-  return text;
 }
 
 function required(value: string | undefined, name: string): string {

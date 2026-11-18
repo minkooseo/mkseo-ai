@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runHumanEvalCli, type HumanEvalProject } from "@mkseo/ai/human-eval";
+import { openBrowser } from "../../src/local-server/open-browser.ts";
 import { project } from "../note-summary-project.ts";
+
+vi.mock("../../src/local-server/open-browser.ts", () => ({
+  openBrowser: vi.fn(),
+}));
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,9 +39,23 @@ describe("note summary project", () => {
     ]);
 
     const judge = ["judge", "--kind", "pair", "--a", a, "--b", b];
-    await runHumanEvalCli(project, [...judge, "--out", out]);
-    const reply = "1 r wordy\n2 r";
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply", reply]);
+    const judging = runHumanEvalCli(project, [...judge, "--out", out]);
+    const url = await vi.waitFor(() => {
+      const [call] = vi.mocked(openBrowser).mock.calls;
+      if (call === undefined) throw new Error("The page is not open yet.");
+      return call[0];
+    });
+    for (const [item, reason] of [
+      [1, "wordy"],
+      [2, "clearer"],
+    ] as const) {
+      await fetch(`${url}choices`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ item, picked: "right", reason }),
+      });
+    }
+    await judging;
     const result = [
       "Pair round, 2 choices",
       "  A: ../a",
@@ -45,13 +64,10 @@ describe("note summary project", () => {
       "Sign test p-value (ties left out): 0.500",
       "A p-value of at most 0.05 means the gap is unlikely to be luck.",
       "",
-      "Tags (A wins / B wins / ties):",
-      "  wordy: 0 / 1 / 0",
-      "",
       "By label (A wins / B wins / ties):",
       "  none",
     ].join("\n");
-    expect(logged.slice(3)).toEqual([result]);
+    expect(logged.at(-1)).toBe(result);
   });
 });
 

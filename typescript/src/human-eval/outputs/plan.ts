@@ -3,88 +3,73 @@ import type {
   HumanEvalCase,
   HumanEvalProject,
   Labels,
-  Split,
-  Voice,
+  Speaker,
 } from "../project.ts";
 import { UsageError } from "../usage-error.ts";
 
 /** One model call to make. */
 export interface OutputTask<C extends HumanEvalCase> {
   readonly testCase: C;
-  readonly voice: Voice;
-  /** Which try for this case and voice, counted from 1; e.g. 2. */
+  readonly speaker: Speaker;
+  /** Which try for this case and speaker, counted from 1; e.g. 2. */
   readonly sample: number;
-  /** Case and voice labels together; e.g. { group: 'calm', task: 'reply' }. */
+  /** Case and speaker labels together; e.g. { tone: 'calm', task: 'reply' }. */
   readonly labels: Labels;
 }
 
 /**
- * List the model calls to make, in case order, then voice order, then
- * sample order. It checks the project before any model call: case ids and
- * voice names must be nonblank and unique, a case and voice must not set one
- * label to different values, every voice must have the group label when
- * there is one, and there must be something to run.
+ * List the model calls to make, in case, speaker, then sample order. It
+ * first checks the project and throws on blank or repeated case ids or
+ * speaker names, a label the case and speaker set differently, or nothing
+ * to run.
  */
 export function planOutputs<C extends HumanEvalCase>({
   project,
-  split,
   samples,
 }: {
   readonly project: HumanEvalProject<C>;
-  readonly split: Split;
   readonly samples: number;
 }): OutputTask<C>[] {
-  assertNamed(
+  assertUniqueNames(
     project.cases.map((testCase) => testCase.id),
     "Case ids",
   );
-  const cases = project.cases.filter((testCase) => testCase.split === split);
-  if (cases.length === 0) {
-    throw new UsageError(`No case is in the ${split} split.`);
-  }
+  if (project.cases.length === 0)
+    throw new UsageError("The project has no cases.");
   const tasks: OutputTask<C>[] = [];
-  for (const testCase of cases) {
-    const voices = project.voices(testCase);
-    assertNamed(
-      voices.map((voice) => voice.name),
-      `Voice names for case ${testCase.id}`,
+  for (const testCase of project.cases) {
+    const speakers = project.speakers(testCase);
+    assertUniqueNames(
+      speakers.map((speaker) => speaker.name),
+      `Speaker names for case ${testCase.id}`,
     );
-    for (const voice of voices) {
-      const labels = mergeLabels(testCase, voice);
-      if (
-        project.groupLabel !== null &&
-        !Object.hasOwn(labels, project.groupLabel)
-      ) {
-        throw new UsageError(
-          `Voice ${voice.name} on case ${testCase.id} has no ` +
-            `"${project.groupLabel}" label.`,
-        );
-      }
+    for (const speaker of speakers) {
+      const labels = mergeLabels(testCase, speaker);
       for (let sample = 1; sample <= samples; sample += 1) {
-        tasks.push({ testCase, voice, sample, labels });
+        tasks.push({ testCase, speaker, sample, labels });
       }
     }
   }
   if (tasks.length === 0) {
-    throw new UsageError(`No voice responds to any ${split} case.`);
+    throw new UsageError("No speaker responds to any case.");
   }
   return tasks;
 }
 
-function mergeLabels(testCase: HumanEvalCase, voice: Voice): Labels {
-  for (const [name, value] of Object.entries(voice.labels)) {
+function mergeLabels(testCase: HumanEvalCase, speaker: Speaker): Labels {
+  for (const [name, value] of Object.entries(speaker.labels)) {
     const caseValue = testCase.labels[name];
     if (Object.hasOwn(testCase.labels, name) && caseValue !== value) {
       throw new UsageError(
-        `Case ${testCase.id} sets label ${name} to ${caseValue}, but voice ` +
-          `${voice.name} sets it to ${value}.`,
+        `Case ${testCase.id} sets label ${name} to ${caseValue}, but speaker ` +
+          `${speaker.name} sets it to ${value}.`,
       );
     }
   }
-  return { ...testCase.labels, ...voice.labels };
+  return { ...testCase.labels, ...speaker.labels };
 }
 
-function assertNamed(names: readonly string[], what: string) {
+function assertUniqueNames(names: readonly string[], what: string) {
   if (names.some((name) => name.trim() === "")) {
     throw new UsageError(`${what} must not be blank.`);
   }

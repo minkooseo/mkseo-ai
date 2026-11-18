@@ -1,15 +1,9 @@
 // Send a command line to the command it names.
 import { runGenerate } from "../outputs/generate.ts";
 import type { HumanEvalCase, HumanEvalProject } from "../project.ts";
-import { runChoose, runNewRound, runShow } from "../session/commands.ts";
+import { runNewRound, runShow } from "../session/commands.ts";
 import { UsageError } from "../usage-error.ts";
-import {
-  parseChoose,
-  parseGenerate,
-  parseJudge,
-  parseShow,
-  usage,
-} from "./options.ts";
+import { parseGenerate, parseJudge, parseShow, usage } from "./options.ts";
 
 /**
  * Run one human evaluation command for a project. `argv` is the command
@@ -49,11 +43,9 @@ async function runCommand<C extends HumanEvalCase>(
     case "generate":
       return runGenerate(project, parseGenerate(args));
     case "judge":
-      return runNewRound(parseJudge(args), project.groupLabel);
+      return runNewRound(parseJudge(args), project);
     case "show":
       return runShow(parseShow(args));
-    case "choose":
-      return runChoose(parseChoose(args));
     default:
       throw new UsageError(
         command === undefined

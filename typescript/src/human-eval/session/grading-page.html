@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grading</title>
+    <style>
+      :root {
+        --page: #f7f7f5;
+        --panel: #ffffff;
+        --text: #1d1d1b;
+        --muted: #66665f;
+        --line: #d9d9d3;
+        --picked: #2f6fd6;
+        --picked-soft: #e5eefc;
+        --error: #b3261e;
+        /* Heights of the sticky header and control bar, set by the script. */
+        --header: 48px;
+        --bar: 64px;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #161615;
+          --panel: #20201e;
+          --text: #ecece8;
+          --muted: #a3a39b;
+          --line: #3a3a36;
+          --picked: #7aa7f5;
+          --picked-soft: #1e2d48;
+          --error: #f2a39c;
+          color-scheme: dark;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Apple SD Gothic Neo",
+          sans-serif;
+      }
+      /* Every card shows in full and the page scrolls; the bottom padding
+         keeps the last card clear of the control bar. */
+      main {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 16px calc(var(--bar) + 16px);
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding: 10px 0 8px;
+        background: var(--page);
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .panel {
+        min-width: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+      }
+      .text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      h2 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 4px;
+      }
+      #context {
+        margin-bottom: 12px;
+      }
+      #sides {
+        display: grid;
+        gap: 12px;
+        align-items: start;
+      }
+      #outputs {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+      }
+      /* A pair item: three columns, Left | Right | description. Left and
+         Right are only as tall as their text and stay in view while the
+         long description scrolls with the page. */
+      #sides.with-description {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+      }
+      #sides.with-description #outputs {
+        display: contents;
+      }
+      #sides.with-description .side {
+        position: sticky;
+        top: calc(var(--header) + 4px);
+      }
+      @media (max-width: 800px) {
+        #outputs,
+        #sides.with-description {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        #sides.with-description .side {
+          position: static;
+        }
+      }
+      .side {
+        cursor: pointer;
+        border-width: 2px;
+      }
+      .side[aria-pressed="true"] {
+        border-color: var(--picked);
+        background: var(--picked-soft);
+      }
+      .speaker + .speaker {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+      }
+      .speaker-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      #bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        background: var(--page);
+        border-top: 1px solid var(--line);
+      }
+      #bar-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 8px 16px;
+      }
+      .bar-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-end;
+      }
+      button {
+        font: inherit;
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      button[aria-pressed="true"] {
+        border-color: var(--picked);
+        background: var(--picked-soft);
+      }
+      #submit {
+        background: var(--picked);
+        border-color: var(--picked);
+        color: var(--panel);
+      }
+      /* On a narrow window the reason box takes its own line. */
+      textarea {
+        flex: 1 1 240px;
+        min-width: 0;
+        font: inherit;
+        padding: 5px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        resize: none;
+        overflow: hidden;
+      }
+      #message {
+        color: var(--error);
+        margin: 4px 0 0;
+      }
+      #message:empty {
+        display: none;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 id="question">Loading…</h1>
+        <span id="progress" class="muted"></span>
+      </header>
+      <section id="item" hidden>
+        <div id="context" class="panel">
+          <h2>Case</h2>
+          <div id="context-text" class="text"></div>
+        </div>
+        <div id="sides">
+          <div id="outputs">
+            <div
+              id="left"
+              class="panel side"
+              role="button"
+              aria-pressed="false"
+            >
+              <h2>Left</h2>
+              <div class="speakers"></div>
+            </div>
+            <div
+              id="right"
+              class="panel side"
+              role="button"
+              aria-pressed="false"
+            >
+              <h2>Right</h2>
+              <div class="speakers"></div>
+            </div>
+          </div>
+          <div id="description" class="panel" hidden>
+            <h2>Speaker description</h2>
+            <div id="description-text" class="text"></div>
+          </div>
+        </div>
+      </section>
+      <p id="done" hidden>
+        Every item has a choice. The result is in the terminal; you can close
+        this page.
+      </p>
+    </main>
+    <div id="bar">
+      <div id="bar-inner">
+        <div class="bar-row">
+          <button type="button" data-pick="left" title="Left arrow">
+            ← Left
+          </button>
+          <button type="button" data-pick="tie" title="T">Tie</button>
+          <button type="button" data-pick="right" title="Right arrow">
+            Right →
+          </button>
+          <textarea
+            id="reason"
+            rows="1"
+            placeholder="Reason (required)"
+            title="← → pick a side, T a tie, Enter submits, Esc leaves the box"
+            aria-label="Reason (required)"
+          ></textarea>
+          <button type="button" id="submit" title="Enter">Submit</button>
+        </div>
+        <p id="message" role="alert"></p>
+      </div>
+    </div>
+    <script>
+      "use strict";
+
+      // The page only ever learns Left and Right; the server keeps which
+      // output set is on which side.
+      const state = {
+        view: null,
+        chosen: new Set(),
+        item: null,
+        picked: null,
+        sending: false,
+      };
+      const byId = (id) => document.getElementById(id);
+      const reasonBox = byId("reason");
+
+      async function load() {
+        const response = await fetch("/round");
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error);
+        state.view = body.view;
+        state.chosen = new Set(body.chosen);
+        byId("question").textContent = body.view.question;
+        showNext();
+      }
+
+      function showNext() {
+        const next = state.view.items.find(
+          (item) => !state.chosen.has(item.number),
+        );
+        if (next === undefined) {
+          byId("item").hidden = true;
+          byId("bar").hidden = true;
+          byId("done").hidden = false;
+          byId("progress").textContent = "";
+          return;
+        }
+        state.item = next;
+        state.picked = null;
+        reasonBox.value = "";
+        fitReasonBox();
+        setMessage("");
+        render(next);
+      }
+
+      function render(item) {
+        const total = state.view.items.length;
+        byId("progress").textContent =
+          `Item ${item.number} of ${total} · ${state.chosen.size} done`;
+        byId("context-text").textContent = item.context;
+        fillSide(byId("left"), item.left);
+        fillSide(byId("right"), item.right);
+        const hasDescription = item.speakerDescription !== null;
+        byId("description").hidden = !hasDescription;
+        byId("sides").classList.toggle("with-description", hasDescription);
+        byId("description-text").textContent = item.speakerDescription ?? "";
+        byId("item").hidden = false;
+        showPick();
+        window.scrollTo(0, 0);
+      }
+
+      // Model text goes in as plain text, never as HTML.
+      function fillSide(side, speakers) {
+        side.querySelector(".speakers").replaceChildren(
+          ...speakers.map((speaker) => {
+            const block = document.createElement("div");
+            block.className = "speaker";
+            const name = document.createElement("div");
+            name.className = "speaker-name";
+            name.textContent = speaker.speaker;
+            const text = document.createElement("div");
+            text.className = "text";
+            text.textContent = speaker.text;
+            block.append(name, text);
+            return block;
+          }),
+        );
+      }
+
+      function pick(picked) {
+        state.picked = picked;
+        setMessage("");
+        showPick();
+        reasonBox.focus();
+      }
+
+      function showPick() {
+        byId("left").setAttribute("aria-pressed", state.picked === "left");
+        byId("right").setAttribute("aria-pressed", state.picked === "right");
+        for (const button of document.querySelectorAll("[data-pick]")) {
+          button.setAttribute(
+            "aria-pressed",
+            button.dataset.pick === state.picked,
+          );
+        }
+      }
+
+      async function submit() {
+        if (state.sending || state.item === null) return;
+        if (state.picked === null) {
+          setMessage("Pick a side or a tie first.");
+          return;
+        }
+        if (reasonBox.value.trim() === "") {
+          setMessage("Write a reason for the pick.");
+          reasonBox.focus();
+          return;
+        }
+        state.sending = true;
+        try {
+          const response = await fetch("/choices", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              item: state.item.number,
+              picked: state.picked,
+              reason: reasonBox.value,
+            }),
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            setMessage(body.error);
+            await refreshChosen();
+            return;
+          }
+          state.chosen.add(state.item.number);
+          reasonBox.blur();
+          showNext();
+        } catch {
+          setMessage(
+            "The grading command is not running. Run show to open the page again.",
+          );
+        } finally {
+          state.sending = false;
+        }
+      }
+
+      // Another page on the same round may have chosen this item.
+      async function refreshChosen() {
+        const response = await fetch("/round");
+        if (!response.ok) return;
+        const body = await response.json();
+        state.chosen = new Set(body.chosen);
+        if (state.chosen.has(state.item.number)) showNext();
+      }
+
+      function setMessage(text) {
+        byId("message").textContent = text;
+      }
+
+      // The reason box starts one line tall and grows with its text.
+      function fitReasonBox() {
+        reasonBox.style.height = "auto";
+        if (reasonBox.value === "") return;
+        reasonBox.style.height = `${reasonBox.scrollHeight + 2}px`;
+      }
+
+      // Sticky parts need the real heights of the header and the bar.
+      const keepHeights = new ResizeObserver(() => {
+        const root = document.documentElement.style;
+        const header = document.querySelector("header");
+        root.setProperty("--header", `${header.offsetHeight}px`);
+        root.setProperty("--bar", `${byId("bar").offsetHeight}px`);
+      });
+      keepHeights.observe(document.querySelector("header"));
+      keepHeights.observe(byId("bar"));
+
+      reasonBox.addEventListener("input", fitReasonBox);
+      byId("left").addEventListener("click", () => pick("left"));
+      byId("right").addEventListener("click", () => pick("right"));
+      for (const button of document.querySelectorAll("[data-pick]")) {
+        button.addEventListener("click", () => pick(button.dataset.pick));
+      }
+      byId("submit").addEventListener("click", submit);
+
+      document.addEventListener("keydown", (event) => {
+        // Keys that finish a Korean or Japanese syllable are not commands.
+        if (event.isComposing || event.keyCode === 229) return;
+        if (byId("item").hidden) return;
+        const inBox = event.target === reasonBox;
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          submit();
+          return;
+        }
+        if (inBox) {
+          if (event.key === "Escape") reasonBox.blur();
+          // Arrows still pick while the box is empty; otherwise they move
+          // the cursor.
+          if (reasonBox.value !== "") return;
+        }
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          pick("left");
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          pick("right");
+        } else if (!inBox && event.code === "KeyT") {
+          // The key's position, so T works with a Korean input source too.
+          event.preventDefault();
+          pick("tie");
+        }
+      });
+
+      load().catch((error) => {
+        byId("question").textContent = "The page could not load the round.";
+        setMessage(String(error.message ?? error));
+      });
+    </script>
+  </body>
+</html>

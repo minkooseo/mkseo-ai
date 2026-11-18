@@ -9,15 +9,18 @@ const client = createModelClient({
 // The prompt being tuned. Edit it, run generate again, then compare.
 const instructions = "Summarize the note in one short sentence.";
 
-/** One prompt, one voice: the smallest human evaluation project. */
+/** One prompt, one speaker: the smallest human evaluation project. */
 export const project: HumanEvalProject = {
   cases: [
-    { id: "train", split: "tuning", labels: {}, context: "Train at 9:30." },
-    { id: "rent", split: "tuning", labels: {}, context: "Rent up 5% in May." },
-    { id: "party", split: "heldout", labels: {}, context: "Party Sat 7pm." },
+    { id: "train", labels: {}, context: "Train at 9:30." },
+    { id: "rent", labels: {}, context: "Rent up 5% in May." },
   ],
-  voices: () => [{ name: "summary", labels: {} }],
+  speakers: () => [{ name: "summary", labels: {} }],
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
-  groupLabel: null,
+  questions: {
+    pair: "Which summary is better?",
+    lineup: "Which side sounds more like different summaries?",
+  },
+  describeSpeaker: null,
 };

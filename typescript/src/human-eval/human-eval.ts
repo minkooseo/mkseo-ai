@@ -6,6 +6,5 @@ export type {
   HumanEvalCase,
   HumanEvalProject,
   Labels,
-  Split,
-  Voice,
+  Speaker,
 } from "./project.ts";

@@ -9,41 +9,14 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { openBrowser } from "../../../local-server/open-browser.ts";
 import { readOutputs } from "../../outputs/output.ts";
-import type { HumanEvalProject, Voice } from "../../project.ts";
+import type { HumanEvalProject, Speaker } from "../../project.ts";
 import { runHumanEvalCli } from "../cli.ts";
 
-const item1 = [
-  "### Item 1 of 2",
-  "Case:",
-  "> The train is late.",
-  "**Left**",
-  "*assistant*",
-  "> assistant on late-train!",
-  "**Right**",
-  "*assistant*",
-  "> assistant on late-train!",
-];
-
-const item2 = [
-  "### Item 2 of 2",
-  "Case:",
-  "> I lost my keys.",
-  "**Left**",
-  "*assistant*",
-  "> assistant on lost-keys.",
-  "**Right**",
-  "*assistant*",
-  "> assistant on lost-keys.",
-];
-
-const pairReplyLine = (first: number) =>
-  "Reply with one line per item: the item number, then l (left is " +
-  "better), r (right is better), or t (tie), then any words about " +
-  `it. Example: ${first} l stiff`;
-
-const firstPage = [...item1, ...item2, pairReplyLine(1)].join("\n\n");
-const pageForItem2 = [...item2, pairReplyLine(2)].join("\n\n");
+vi.mock("../../../local-server/open-browser.ts", () => ({
+  openBrowser: vi.fn(),
+}));
 
 let work: string;
 let logged: string[];
@@ -63,13 +36,13 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.mocked(openBrowser).mockReset();
   process.exitCode = undefined;
 });
 
-describe("runHumanEvalCli with a single voice", () => {
+describe("runHumanEvalCli with a single speaker", () => {
   const project = projectWith({
-    voices: [{ name: "assistant", labels: {} }],
-    groupLabel: null,
+    speakers: [{ name: "assistant", labels: {} }],
   });
 
   it("generates outputs for the tuning cases", async () => {
@@ -80,52 +53,54 @@ describe("runHumanEvalCli with a single voice", () => {
     expect(await readOutputs(out)).toEqual([
       {
         caseId: "late-train",
-        voice: "assistant",
+        speaker: "assistant",
         sample: 1,
-        context: "The train is late.",
+        context: "My train was 40 minutes late.",
         text: "assistant on late-train!",
         labels: { task: "reply" },
+        speakerDescription: "assistant: plain and short.",
       },
       {
         caseId: "lost-keys",
-        voice: "assistant",
+        speaker: "assistant",
         sample: 1,
         context: "I lost my keys.",
         text: "assistant on lost-keys.",
         labels: { task: "reply" },
+        speakerDescription: "assistant: plain and short.",
       },
     ]);
   });
 
-  it("runs a blind pair round from first page to result", async () => {
+  it("grades a pair round on the page and prints the result", async () => {
     // With 0 every shuffle keeps its order and set A goes on the left.
     vi.spyOn(Math, "random").mockReturnValue(0);
-    const a = join(work, "a");
-    const b = join(work, "b");
+    const { a, b } = await generateBoth(project);
     const out = join(work, "round");
-    await runHumanEvalCli(project, ["generate", "--out", a]);
-    await runHumanEvalCli(project, ["generate", "--out", b]);
-    logged = [];
     const judge = ["judge", "--kind", "pair", "--a", a, "--b", b];
-    await runHumanEvalCli(project, [...judge, "--out", out]);
-    expect(logged.splice(0)).toEqual([firstPage]);
+    const judging = runHumanEvalCli(project, [...judge, "--out", out]);
+    const url = await pageUrl(1);
 
-    await runHumanEvalCli(project, [
-      "choose",
-      "--out",
-      out,
-      "--reply=1 L warm",
+    const state = (await (await fetch(`${url}round`)).json()) as {
+      view: { items: { context: string; speakerDescription: unknown }[] };
+    };
+    expect(
+      state.view.items.map((item) => [item.context, item.speakerDescription]),
+    ).toEqual([
+      ["My train was 40 minutes late.", "assistant: plain and short."],
+      ["I lost my keys.", "assistant: plain and short."],
     ]);
-    await runHumanEvalCli(project, ["show", "--out", out]);
-    expect(logged.splice(0)).toEqual([pageForItem2, pageForItem2]);
+    expect(await choose(url, { item: 1, picked: "left", reason: "" })).toBe(
+      400,
+    );
+    expect(await choose(url, { item: 1, picked: "left", reason: "warm" })).toBe(
+      200,
+    );
+    expect(await choose(url, { item: 2, picked: "tie", reason: "Same." })).toBe(
+      200,
+    );
+    await judging;
 
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply", "1 r"]);
-    expect(errors.splice(0)).toEqual([
-      '"1 r" does not start with an item on this page (items 2).',
-    ]);
-
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply", "2 t"]);
-    await runHumanEvalCli(project, ["show", "--out", out]);
     const result = [
       "Pair round, 2 choices",
       "  A: ../a",
@@ -134,22 +109,83 @@ describe("runHumanEvalCli with a single voice", () => {
       "Sign test p-value (ties left out): 1.000",
       "A p-value of at most 0.05 means the gap is unlikely to be luck.",
       "",
-      "Tags (A wins / B wins / ties):",
-      "  warm: 1 / 0 / 0",
-      "",
       "By label (A wins / B wins / ties):",
       "  task=reply: 1 / 0 / 1",
     ].join("\n");
     expect(logged).toEqual([
+      `Grade the round at ${url}`,
+      "This command ends when every item has a choice.",
       result,
-      `This round is finished. The result is in ${join(out, "result.json")}.`,
     ]);
     expect(
       JSON.parse(await readFile(join(out, "result.json"), "utf8")),
     ).toMatchObject({ kind: "pair", a: "../a", b: "../b", aWins: 1 });
+    expect(
+      JSON.parse(await readFile(join(out, "decisions.json"), "utf8")),
+    ).toEqual([
+      {
+        item: 1,
+        caseId: "late-train",
+        sample: 1,
+        speakers: ["assistant"],
+        labels: { task: "reply" },
+        winner: "a",
+        reason: "warm",
+      },
+      {
+        item: 2,
+        caseId: "lost-keys",
+        sample: 1,
+        speakers: ["assistant"],
+        labels: { task: "reply" },
+        winner: "tie",
+        reason: "Same.",
+      },
+    ]);
 
+    logged = [];
+    await runHumanEvalCli(project, ["show", "--out", out]);
+    expect(logged).toEqual([
+      `This round is finished. The result is in ${join(out, "result.json")}.`,
+    ]);
     await runHumanEvalCli(project, [...judge, "--out", out]);
     expect(errors.pop()).toBe(`${out} is not empty. Use a new --out folder.`);
+  });
+
+  it("refuses show while judge serves the round, naming its page", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const { a, b } = await generateBoth(project);
+    const out = join(work, "round");
+    const judging = runHumanEvalCli(project, [
+      ...["judge", "--kind", "pair", "--a", a, "--b", b, "--out", out],
+    ]);
+    const url = await pageUrl(1);
+    await choose(url, { item: 1, picked: "right", reason: "Kinder." });
+
+    await runHumanEvalCli(project, ["show", "--out", out]);
+    expect(errors).toEqual([
+      `This round is already open at ${url} (process ${process.pid}). ` +
+        "Use that page. If it does not open, delete serving.json in the " +
+        "round folder.",
+    ]);
+    process.exitCode = undefined;
+
+    await choose(url, { item: 2, picked: "right", reason: "Kinder." });
+    await judging;
+    expect(logged.at(-1)).toBe(
+      [
+        "Pair round, 2 choices",
+        "  A: ../a",
+        "  B: ../b",
+        "A won 0, B won 2, ties 0.",
+        "Sign test p-value (ties left out): 0.500",
+        "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+        "",
+        "By label (A wins / B wins / ties):",
+        "  task=reply: 0 / 2 / 0",
+      ].join("\n"),
+    );
+    expect(await readdir(out)).not.toContain("serving.json");
   });
 
   it("writes a missing result when showing a finished round", async () => {
@@ -157,15 +193,13 @@ describe("runHumanEvalCli with a single voice", () => {
     const run = join(work, "run");
     const out = join(work, "round");
     await runHumanEvalCli(project, ["generate", "--out", run]);
-    await runHumanEvalCli(project, [
+    const judging = runHumanEvalCli(project, [
       ...["judge", "--kind", "pair", "--a", run, "--b", run, "--out", out],
     ]);
-    await runHumanEvalCli(project, [
-      "choose",
-      "--out",
-      out,
-      "--reply=1 l, 2 r",
-    ]);
+    const url = await pageUrl(1);
+    await choose(url, { item: 1, picked: "left", reason: "Same." });
+    await choose(url, { item: 2, picked: "right", reason: "Same." });
+    await judging;
     await rm(join(out, "result.json"));
     logged = [];
     await runHumanEvalCli(project, ["show", "--out", out]);
@@ -174,21 +208,9 @@ describe("runHumanEvalCli with a single voice", () => {
     ]);
     expect(await readdir(out)).toEqual([
       "choices.json",
+      "decisions.json",
       "result.json",
       "round.json",
-    ]);
-  });
-
-  it("takes a reply that starts with a dash when joined with =", async () => {
-    const run = join(work, "run");
-    const out = join(work, "round");
-    await runHumanEvalCli(project, ["generate", "--out", run]);
-    await runHumanEvalCli(project, [
-      ...["judge", "--kind", "pair", "--a", run, "--b", run, "--out", out],
-    ]);
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply=-1 l"]);
-    expect(errors).toEqual([
-      '"-1 l" does not start with an item on this page (items 1, 2).',
     ]);
   });
 
@@ -201,72 +223,43 @@ describe("runHumanEvalCli with a single voice", () => {
       ...["--out", out],
     ]);
     expect(errors).toEqual([
-      "Nothing to compare: lineup needs two or more voices responding to " +
-        "the same case in the same group.",
+      "Nothing to compare: lineup needs two or more speakers responding " +
+        "to the same case.",
     ]);
     expect(process.exitCode).toBe(1);
   });
 });
 
-describe("runHumanEvalCli with several voices", () => {
-  const voices: Voice[] = [
-    { name: "formal", labels: { group: "calm" } },
-    { name: "casual", labels: { group: "calm" } },
-    { name: "plain", labels: { group: "loud" } },
+describe("runHumanEvalCli with several speakers", () => {
+  const speakers: Speaker[] = [
+    { name: "formal", labels: { tone: "calm" } },
+    { name: "casual", labels: { tone: "calm" } },
+    { name: "plain", labels: { tone: "loud" } },
   ];
 
-  it("runs a lineup round within each group", async () => {
+  it("runs a lineup round of every speaker on a case", async () => {
     // With 0 every shuffle keeps its order and set A goes on the left.
     vi.spyOn(Math, "random").mockReturnValue(0);
-    const project = projectWith({ voices, groupLabel: "group" });
-    const a = join(work, "a");
-    const b = join(work, "b");
+    const project = projectWith({ speakers });
+    const { a, b } = await generateBoth(project);
     const out = join(work, "round");
-    await runHumanEvalCli(project, ["generate", "--out", a]);
-    await runHumanEvalCli(project, ["generate", "--out", b]);
-    logged = [];
-    await runHumanEvalCli(project, [
+    const judging = runHumanEvalCli(project, [
       ...["judge", "--kind", "lineup", "--a", a, "--b", b, "--out", out],
     ]);
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply=1 r"]);
-    await runHumanEvalCli(project, ["choose", "--out", out, "--reply=2 l"]);
-    expect(logged).toEqual([
-      [
-        "### Item 1 of 2",
-        "Case:",
-        "> The train is late.",
-        "**Left**",
-        "*casual*",
-        "> casual on late-train!",
-        "*formal*",
-        "> formal on late-train!",
-        "**Right**",
-        "*casual*",
-        "> casual on late-train!",
-        "*formal*",
-        "> formal on late-train!",
-        "Reply with the item number, then l or r for the side that sounds " +
-          "more like different people, or t (tie), then any words about " +
-          "it. Example: 1 r",
-      ].join("\n\n"),
-      [
-        "### Item 2 of 2",
-        "Case:",
-        "> I lost my keys.",
-        "**Left**",
-        "*casual*",
-        "> casual on lost-keys.",
-        "*formal*",
-        "> formal on lost-keys.",
-        "**Right**",
-        "*casual*",
-        "> casual on lost-keys.",
-        "*formal*",
-        "> formal on lost-keys.",
-        "Reply with the item number, then l or r for the side that sounds " +
-          "more like different people, or t (tie), then any words about " +
-          "it. Example: 2 r",
-      ].join("\n\n"),
+    const url = await pageUrl(1);
+    const state = (await (await fetch(`${url}round`)).json()) as {
+      view: { items: { left: { speaker: string }[] }[] };
+    };
+    expect(
+      state.view.items.map((item) => item.left.map((one) => one.speaker)),
+    ).toEqual([
+      ["casual", "formal", "plain"],
+      ["casual", "formal", "plain"],
+    ]);
+    await choose(url, { item: 1, picked: "right", reason: "Varied." });
+    await choose(url, { item: 2, picked: "left", reason: "Varied." });
+    await judging;
+    expect(logged.at(-1)).toBe(
       [
         "Lineup round, 2 choices",
         "  A: ../a",
@@ -276,27 +269,21 @@ describe("runHumanEvalCli with several voices", () => {
         "A p-value of at most 0.05 means the gap is unlikely to be luck.",
         "",
         "By label (A wins / B wins / ties):",
-        "  group=calm: 1 / 1 / 0",
         "  task=reply: 1 / 1 / 0",
       ].join("\n"),
-    ]);
+    );
   });
 });
 
 describe("runHumanEvalCli options", () => {
   const project = projectWith({
-    voices: [{ name: "assistant", labels: {} }],
-    groupLabel: null,
+    speakers: [{ name: "assistant", labels: {} }],
   });
 
   it.each([
     {
       argv: ["judge", "--kind", "both", "--a", "x", "--b", "y", "--out", "z"],
       message: '--kind must be pair or lineup, not "both".',
-    },
-    {
-      argv: ["generate", "--out", "z", "--split", "dev"],
-      message: '--split must be tuning or heldout, not "dev".',
     },
     {
       argv: [
@@ -337,8 +324,7 @@ describe("runHumanEvalCli options", () => {
 describe("runHumanEvalCli generate", () => {
   it("stops at a failed model call and writes nothing", async () => {
     const working = projectWith({
-      voices: [{ name: "assistant", labels: {} }],
-      groupLabel: null,
+      speakers: [{ name: "assistant", labels: {} }],
     });
     const failing: HumanEvalProject = {
       ...working,
@@ -351,7 +337,7 @@ describe("runHumanEvalCli generate", () => {
     await expect(
       runHumanEvalCli(failing, ["generate", "--out", out]),
     ).rejects.toThrow(
-      "The model call for case late-train, voice assistant, sample 1 " +
+      "The model call for case late-train, speaker assistant, sample 1 " +
         "failed: Model server is not running",
     );
     expect(await readdir(work)).toEqual([]);
@@ -364,8 +350,7 @@ describe("runHumanEvalCli generate", () => {
     let started = 0;
     const failing: HumanEvalProject = {
       ...projectWith({
-        voices: [{ name: "assistant", labels: {} }],
-        groupLabel: null,
+        speakers: [{ name: "assistant", labels: {} }],
       }),
       generate: () => {
         started += 1;
@@ -383,8 +368,7 @@ describe("runHumanEvalCli generate", () => {
 
   it("refuses a folder that is not empty", async () => {
     const project = projectWith({
-      voices: [{ name: "assistant", labels: {} }],
-      groupLabel: null,
+      speakers: [{ name: "assistant", labels: {} }],
     });
     const out = join(work, "run");
     await mkdir(out);
@@ -394,40 +378,62 @@ describe("runHumanEvalCli generate", () => {
   });
 });
 
-function projectWith({
-  voices,
-  groupLabel,
-}: {
-  voices: Voice[];
-  groupLabel: string | null;
-}): HumanEvalProject {
+// Generates output sets A and B into the work folder, leaving no log.
+async function generateBoth(
+  project: HumanEvalProject,
+): Promise<{ a: string; b: string }> {
+  const a = join(work, "a");
+  const b = join(work, "b");
+  await runHumanEvalCli(project, ["generate", "--out", a]);
+  await runHumanEvalCli(project, ["generate", "--out", b]);
+  logged = [];
+  return { a, b };
+}
+
+// The address of the nth grading page opened in this test, counted from 1.
+async function pageUrl(nth: number): Promise<string> {
+  return vi.waitFor(() => {
+    const call = vi.mocked(openBrowser).mock.calls[nth - 1];
+    if (call === undefined) throw new Error(`Page ${nth} is not open yet.`);
+    return call[0];
+  });
+}
+
+// Sends one choice to the page's server and gives back the status.
+async function choose(url: string, choice: unknown): Promise<number> {
+  const response = await fetch(`${url}choices`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(choice),
+  });
+  await response.body?.cancel();
+  return response.status;
+}
+
+function projectWith({ speakers }: { speakers: Speaker[] }): HumanEvalProject {
   return {
     cases: [
       {
         id: "late-train",
-        split: "tuning",
-        context: "The train is late.",
+        context: "My train was 40 minutes late.",
         labels: { task: "reply" },
       },
       {
         id: "lost-keys",
-        split: "tuning",
         context: "I lost my keys.",
         labels: { task: "reply" },
       },
-      {
-        id: "new-job",
-        split: "heldout",
-        context: "I start a new job.",
-        labels: { task: "reply" },
-      },
     ],
-    voices: () => voices,
-    generate: ({ case: testCase, voice }) =>
+    speakers: () => speakers,
+    generate: ({ case: testCase, speaker }) =>
       Promise.resolve(
-        `${voice.name} on ${testCase.id}` +
+        `${speaker.name} on ${testCase.id}` +
           (testCase.id === "late-train" ? "!" : "."),
       ),
-    groupLabel,
+    questions: {
+      pair: "Which reply is kinder?",
+      lineup: "Which side sounds more like different people?",
+    },
+    describeSpeaker: ({ speaker }) => `${speaker.name}: plain and short.`,
   };
 }

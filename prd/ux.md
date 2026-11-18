@@ -32,26 +32,40 @@ restart for library source and preset edits.
 ## Human evaluation commands
 
 A project runs its human evaluation command line with one of these commands.
-Each runs once, prints plain text, and exits, so an agent can relay pages and
-replies through a chat; nothing waits for key presses.
 
-- `generate --out <dir> [--split tuning|heldout] [--samples <n>]` makes an
-  output set and prints how many outputs it wrote.
+- `generate --out <dir> [--samples <n>]` makes an output set and prints how many
+  outputs it wrote.
 - `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]`
-  starts a blind round and prints its first page.
-- `show --out <dir>` prints the current page again, or, for a finished round,
-  where its result is.
-- `choose --out <dir> --reply="<words>"` records the person's reply and prints
-  the next page, or the result when the round is done.
+  starts a blind round, opens its grading page, and prints the page's address.
+  It ends when every item has a choice and prints the result.
+- `show --out <dir>` opens the grading page again for an unfinished round, or,
+  for a finished round, prints where its result is. While another `judge` or
+  `show` serves the round, it refuses and prints that page's address instead.
 
-A page is Markdown meant to be pasted unchanged: numbered items with the case
-context, then the outputs under Left and Right, and one closing line on how to
-reply, for example `3 l stiff`. Problems the person can fix, such as a folder
-that is not empty, a bad reply, or a round with nothing to compare, print one
-plain line and end with a failing exit code; bugs keep their stack trace. A
-failed model call stops `generate` with an error that names the case and voice,
-and nothing is written, so the same command can run again.
-[Human evaluation](human-eval.md) owns the rules.
+The grading page runs on this machine only and opens on macOS. It shows one item
+at a time. The question and progress stay at the top, and the case follows in
+full. A pair item with a description has three columns, Left | Right |
+description, with the description twice as wide; Left and Right are only as tall
+as their text and stay in view while the page scrolls through the description. A
+lineup has two columns, Left and Right, each listing every speaker in full. On a
+narrow window everything stacks in one column. The page itself scrolls, never
+sideways.
+
+The controls are one bar at the bottom of the window: Left, Tie, Right, a reason
+box that starts one line tall and grows with its text, and Submit; the bar wraps
+on a narrow window. The left and right arrow keys pick a side, the T key picks a
+tie (by its position, so it works with a Korean input source), and Enter
+submits; the mouse does the same through the sides and buttons. The arrows still
+pick while the reason box is empty, and Esc leaves the box. A missing pick or
+reason shows one line under the bar and records nothing. When every item has a
+choice, the page says the result is in the terminal. If the command has stopped,
+the page says to run `show`.
+
+Problems the person can fix, such as a folder that is not empty or a round with
+nothing to compare, print one plain line and end with a failing exit code; bugs
+keep their stack trace. A failed model call stops `generate` with an error that
+names the case and speaker, and nothing is written, so the same command can run
+again. [Human evaluation](human-eval.md) owns the rules.
 
 ## Editable development
 
@@ -75,6 +89,8 @@ and remaining runtime limitations.
 ## Interface and design system
 
 The product surfaces are typed developer APIs, configuration choices, the
-terminal demo, and the human evaluation command line. It supplies no application
-screens, navigation, dialogs, toasts, visual components, or design tokens.
-Consuming applications own those surfaces and their user-facing error language.
+terminal demo, and the human evaluation command line with its grading page. It
+supplies no application screens, navigation, dialogs, toasts, or design tokens;
+the grading page uses the system font and follows the system's light or dark
+mode. Consuming applications own those surfaces and their user-facing error
+language.

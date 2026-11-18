@@ -1,17 +1,15 @@
-// The commands that act on a round: judge starts one, show prints the next
-// page, and choose records the person's reply.
+// The commands that act on a round: judge starts one and show reopens it.
 import { relative } from "node:path";
-import { parseReply } from "../choices/choices.ts";
 import { formatResult } from "../choices/format-result.ts";
-import { resultOf } from "../choices/result.ts";
 import { assertNewFolder } from "../file-io.ts";
 import { readOutputs } from "../outputs/output.ts";
+import type { HumanEvalCase, HumanEvalProject } from "../project.ts";
 import { lineupItems, pairItems } from "../round/items.ts";
-import { formatPage } from "../round/page.ts";
 import type { Round } from "../round/round.ts";
 import { UsageError } from "../usage-error.ts";
-import { readSession, saveChoices, saveResult, startSession } from "./files.ts";
-import { currentPage, type Session } from "./session.ts";
+import { readSession, saveFinished, startSession } from "./files.ts";
+import { gradeRound } from "./grading.ts";
+import { isFinished } from "./session.ts";
 
 /** What `judge` should put on a new round. */
 export interface RoundRequest {
@@ -27,101 +25,59 @@ export interface RoundRequest {
 }
 
 /**
- * The `judge` command: build a blind round, save it in the request's `out`
- * folder, and print its first page.
+ * The `judge` command: draw a blind round, save it in the request's `out`
+ * folder, and grade it on the page. Prints the result when every item has
+ * a choice.
  */
-export async function runNewRound(
+export async function runNewRound<C extends HumanEvalCase>(
   request: RoundRequest,
-  groupLabel: string | null,
+  project: HumanEvalProject<C>,
 ): Promise<void> {
   await assertNewFolder(request.out);
-  const round = await drawRound(request, groupLabel);
+  const round = await drawRound(request, project);
   await startSession(request.out, round);
-  const page = currentPage({ round, choices: [] });
-  console.log(formatPage({ round, page }));
+  console.log(formatResult(await gradeRound(request.out)));
 }
 
 /**
- * The `show` command: print the next page of items without a choice. On a
- * finished round, save the result and say where it is.
+ * The `show` command: open the grading page again for an unfinished round
+ * and print the result when it is done. For a finished round, save the
+ * result and decisions and say where the result is.
  */
 export async function runShow(out: string): Promise<void> {
   const session = await readSession(out);
-  const page = currentPage(session);
-  if (page.length > 0) {
-    console.log(formatPage({ round: session.round, page }));
+  if (isFinished(session)) {
+    const { path } = await saveFinished(out, session);
+    console.log(`This round is finished. The result is in ${path}.`);
     return;
   }
-  console.log(finishedMessage(await saveResult(out, resultOf(session))));
+  console.log(formatResult(await gradeRound(out)));
 }
 
-/**
- * The `choose` command: record the person's reply to the current page. Then
- * print the next page, or, once every item has a choice, save and print the
- * result.
- */
-export async function runChoose({
-  out,
-  reply,
-}: {
-  readonly out: string;
-  /** The person's words, passed on unchanged; e.g. '1 l stiff, 2 r'. */
-  readonly reply: string;
-}): Promise<void> {
-  const saved = await readSession(out);
-  const page = currentPage(saved);
-  if (page.length === 0) {
-    const path = await saveResult(out, resultOf(saved));
-    throw new UsageError(finishedMessage(path));
-  }
-  const choices = parseReply({ reply, page });
-  const session: Session = {
-    ...saved,
-    choices: [...saved.choices, ...choices],
-  };
-  const next = currentPage(session);
-  if (next.length > 0) {
-    await saveChoices(out, session.choices);
-    console.log(formatPage({ round: session.round, page: next }));
-    return;
-  }
-  // Count first, so a problem in the count saves nothing.
-  const result = resultOf(session);
-  await saveChoices(out, session.choices);
-  await saveResult(out, result);
-  console.log(formatResult(result));
-}
-
-function finishedMessage(resultPath: string): string {
-  return `This round is finished. The result is in ${resultPath}.`;
-}
-
-async function drawRound(
+async function drawRound<C extends HumanEvalCase>(
   request: RoundRequest,
-  groupLabel: string | null,
+  project: HumanEvalProject<C>,
 ): Promise<Round> {
   const { itemLimit, out } = request;
-  // The round file keeps the drawn items and sides, so plain Math.random
-  // is enough.
-  const random = Math.random;
   const a = await readOutputs(request.a);
   const b = await readOutputs(request.b);
   const items =
     request.kind === "pair"
-      ? pairItems({ a, b, itemLimit, random })
-      : lineupItems({ a, b, groupLabel, itemLimit, random });
+      ? pairItems({ a, b, itemLimit })
+      : lineupItems({ a, b, itemLimit });
   // Only lineup can draw no items: both sets hold outputs and itemLimit is
   // at least 1, so pair always draws one.
   if (items.length === 0) {
     throw new UsageError(
-      "Nothing to compare: lineup needs two or more voices responding to " +
-        "the same case in the same group.",
+      "Nothing to compare: lineup needs two or more speakers responding " +
+        "to the same case.",
     );
   }
   // Folders are saved relative to the round, so a saved round reads the
   // same from any checkout.
   return {
     kind: request.kind,
+    question: project.questions[request.kind],
     a: relative(out, request.a),
     b: relative(out, request.b),
     items,

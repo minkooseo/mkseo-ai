@@ -1,9 +1,8 @@
 // The exact sign test that says whether A and B really differ.
 /**
- * The exact two-sided sign test. Given how many times A won and B won (ties
- * left out), it returns the p-value: the chance of a split at least this
- * uneven if A and B were really equally good. A small p-value, such as below
- * 0.05, means the gap is unlikely to be luck. With no wins at all it is 1.
+ * The exact two-sided sign test p-value: the chance of a win split at least
+ * this uneven if A and B were equally good. Below 0.05, the gap is unlikely
+ * to be luck; with no wins at all it is 1.
  */
 export function signTest({
   aWins,

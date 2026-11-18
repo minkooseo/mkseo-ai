@@ -3,10 +3,11 @@ import type { RoundItem } from "../../round/round.ts";
 import { resultOf } from "../result.ts";
 
 describe("resultOf", () => {
-  it("counts pair choices for each output set, tag, and label", () => {
+  it("counts pair choices for each output set and label", () => {
     const result = resultOf({
       round: {
         kind: "pair",
+        question: "Which reply is kinder?",
         a: "/runs/a",
         b: "/runs/b",
         items: [
@@ -16,24 +17,20 @@ describe("resultOf", () => {
         ],
       },
       choices: [
-        { item: 2, picked: "right", tags: ["warm", "short"] },
-        { item: 1, picked: "left", tags: ["warm"] },
-        { item: 3, picked: "tie", tags: [] },
+        { item: 2, picked: "right", reason: "Warm, short." },
+        { item: 1, picked: "left", reason: "warm" },
+        { item: 3, picked: "tie", reason: "Same." },
       ],
     });
     expect(result).toEqual({
       kind: "pair",
       a: "/runs/a",
       b: "/runs/b",
-      choices: 3,
+      choiceCount: 3,
       aWins: 2,
       bWins: 0,
       ties: 1,
       pValue: 0.5,
-      byTag: {
-        warm: { aWins: 2, bWins: 0, ties: 0 },
-        short: { aWins: 1, bWins: 0, ties: 0 },
-      },
       byLabel: {
         tone: {
           formal: { aWins: 2, bWins: 0, ties: 0 },
@@ -43,19 +40,17 @@ describe("resultOf", () => {
     });
   });
 
-  it("counts tags and labels named like object built-ins", () => {
+  it("counts labels named like object built-ins", () => {
     const result = resultOf({
       round: {
         kind: "pair",
+        question: "Which reply is kinder?",
         a: "../a",
         b: "../b",
         items: [roundItem({ leftSet: "a", tone: "constructor" })],
       },
-      choices: [{ item: 1, picked: "left", tags: ["__proto__"] }],
+      choices: [{ item: 1, picked: "left", reason: "__proto__" }],
     });
-    expect(result.byTag).toEqual(
-      Object.fromEntries([["__proto__", { aWins: 1, bWins: 0, ties: 0 }]]),
-    );
     expect(result.byLabel).toEqual({
       tone: { constructor: { aWins: 1, bWins: 0, ties: 0 } },
     });
@@ -66,6 +61,7 @@ describe("resultOf", () => {
       resultOf({
         round: {
           kind: "lineup",
+          question: "Which side sounds more like different people?",
           a: "/runs/a",
           b: "/runs/b",
           items: [roundItem({ leftSet: "a", tone: "formal" })],
@@ -88,8 +84,9 @@ function roundItem({
     sample: 1,
     context: "Case c1.",
     labels: { tone },
+    speakerDescription: null,
     leftSet,
-    left: [{ voice: tone, text: "Left." }],
-    right: [{ voice: tone, text: "Right." }],
+    left: [{ speaker: tone, text: "Left." }],
+    right: [{ speaker: tone, text: "Right." }],
   };
 }

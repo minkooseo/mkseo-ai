@@ -13,8 +13,8 @@ Studio. It supports explicit structured or prompted output, bounded retries, and
 classified failures through an injected Node or Expo transport. Model presets
 avoid repeated endpoint and model configuration. A separate Node-only entry
 supports human evaluation: a person tunes a prompt by deciding blind A/B
-comparisons of model outputs, or has an agent decide in their place; the library
-never scores an output or picks a side.
+comparisons of model outputs on a local grading page; the library never scores
+an output or picks a side.
 
 Each package owns its dependencies and distribution. Editable TypeScript
 consumption must expose source and preset changes without a library build, copy,

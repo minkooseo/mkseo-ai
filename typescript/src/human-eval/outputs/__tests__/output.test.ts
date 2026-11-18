@@ -15,9 +15,9 @@ describe("readOutputs", () => {
 });
 
 describe("matchSets", () => {
-  it("gives the B output for an A output of the same case and voice", () => {
-    const a = output({ voice: "formal", text: "A" });
-    const b = output({ voice: "formal", text: "B" });
+  it("matches outputs whose speaker descriptions differ", () => {
+    const a = output({ speaker: "formal", text: "A" });
+    const b = output({ speaker: "formal", text: "B" });
     expect(matchSets([a], [b])(a)).toBe(b);
   });
 
@@ -25,16 +25,16 @@ describe("matchSets", () => {
     expect(() =>
       matchSets(
         [
-          output({ voice: "formal", text: "A" }),
-          output({ voice: "casual", text: "A" }),
+          output({ speaker: "formal", text: "A" }),
+          output({ speaker: "casual", text: "A" }),
         ],
         [
-          { ...output({ voice: "formal", text: "B" }), context: "Other." },
-          output({ voice: "plain", text: "B" }),
+          { ...output({ speaker: "formal", text: "B" }), context: "Other." },
+          output({ speaker: "plain", text: "B" }),
         ],
       ),
     ).toThrow(
-      "Output sets A and B must hold the same cases, voices, and samples:\n" +
+      "Output sets A and B must hold the same cases, speakers, and samples:\n" +
         "  different case text or labels: late-train / formal / 1\n" +
         "  only in A: late-train / casual / 1\n" +
         "  only in B: late-train / plain / 1",
@@ -42,20 +42,21 @@ describe("matchSets", () => {
   });
 
   it("rejects a repeated output", () => {
-    const one = output({ voice: "formal", text: "A" });
+    const one = output({ speaker: "formal", text: "A" });
     expect(() => matchSets([one, one], [one])).toThrow(
       "Output late-train / formal / 1 appears twice.",
     );
   });
 });
 
-function output({ voice, text }: { voice: string; text: string }): Output {
+function output({ speaker, text }: { speaker: string; text: string }): Output {
   return {
     caseId: "late-train",
-    voice,
+    speaker,
     sample: 1,
     context: "The train is late.",
     text,
     labels: { task: "reply" },
+    speakerDescription: `${speaker}, as of set ${text}.`,
   };
 }

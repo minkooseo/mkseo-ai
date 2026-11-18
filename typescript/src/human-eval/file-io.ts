@@ -12,22 +12,20 @@ export async function readJson<S extends z.ZodType>(
   return parseJson({
     text: await readFile(path, "utf8"),
     schema,
-    where: path,
+    source: path,
   });
 }
 
-/**
- * Parse JSON text and check it against `schema`. `where` names the text in
- * the error; e.g. '/work/run-1/outputs.jsonl line 3'.
- */
+/** Parse JSON text and check it against `schema`. Throws when invalid. */
 export function parseJson<S extends z.ZodType>({
   text,
   schema,
-  where,
+  source,
 }: {
   readonly text: string;
   readonly schema: S;
-  readonly where: string;
+  /** Where the text came from, for errors; e.g. 'outputs.jsonl line 3'. */
+  readonly source: string;
 }): z.output<S> {
   let value: unknown;
   try {
@@ -35,12 +33,12 @@ export function parseJson<S extends z.ZodType>({
   } catch (error) {
     // Broken JSON is a damaged file the person can fix, not a bug.
     if (!(error instanceof SyntaxError)) throw error;
-    throw new UsageError(`${where} is not valid JSON: ${error.message}`);
+    throw new UsageError(`${source} is not valid JSON: ${error.message}`);
   }
   const result = schema.safeParse(value);
   if (!result.success) {
     throw new UsageError(
-      `${where} is not valid: ${z.prettifyError(result.error)}`,
+      `${source} is not valid: ${z.prettifyError(result.error)}`,
     );
   }
   return result.data;
@@ -54,7 +52,8 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
 /** Write `text` to `path`. A crash never leaves half a file. */
 export async function writeText(path: string, text: string): Promise<void> {
   // Renaming a finished temporary file replaces the old file in one step.
-  const temporary = `${path}.tmp`;
+  // The process id keeps two processes from sharing a temporary file.
+  const temporary = `${path}.${process.pid}.tmp`;
   await writeFile(temporary, text);
   await rename(temporary, path);
 }

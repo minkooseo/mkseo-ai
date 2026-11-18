@@ -1,118 +1,90 @@
-// Draw the items of a pair or lineup round from output sets.
-import { groupBy } from "../group-by.ts";
-import { groupOf, matchSets } from "../outputs/output.ts";
+// Draw the items of a pair or lineup round from two output sets.
+import { matchSets } from "../outputs/output.ts";
 import type { Labels, Output } from "../project.ts";
-import type { RoundItem, VoiceOutput } from "./round.ts";
-import { spreadPick } from "./spread-pick.ts";
+import type { RoundItem, SpeakerOutput } from "./round.ts";
 
 interface ItemRequest {
+  readonly a: readonly Output[];
+  readonly b: readonly Output[];
   /** Most items to return; fewer when there are not enough outputs. */
   readonly itemLimit: number;
-  /** Random number source from 0 up to 1; e.g. Math.random. */
-  readonly random: () => number;
 }
 
 /**
- * Build pair items: each shows one case, voice, and sample from set A and
- * set B, on random sides. Items are spread evenly across voices.
+ * Build pair items, drawn at random: each shows one case, speaker, and
+ * sample from set A and set B, on random sides. The speaker description
+ * comes from set B's output, since B is the newer set being proposed.
  */
-export function pairItems({
-  a,
-  b,
-  itemLimit,
-  random,
-}: ItemRequest & {
-  readonly a: readonly Output[];
-  readonly b: readonly Output[];
-}): RoundItem[] {
-  const partnerOf = matchSets(a, b);
-  const picked = spreadPick({
-    candidates: a,
-    spreadBy: (output) => output.voice,
-    itemLimit,
-    random,
-  });
+export function pairItems({ a, b, itemLimit }: ItemRequest): RoundItem[] {
+  const bOutputFor = matchSets(a, b);
+  const picked = shuffle(a).slice(0, itemLimit);
   return drawSides(
-    picked.map((output) => ({
-      first: output,
-      a: [voiceOutput(output)],
-      b: [voiceOutput(partnerOf(output))],
-      labels: output.labels,
-    })),
-    random,
-  );
-}
-
-/**
- * Build lineup items: each shows, for one case and sample, every voice in
- * one group from set A against the same voices from set B, on random
- * sides. Groups with a single voice are skipped. Items are spread evenly
- * across groups.
- */
-export function lineupItems({
-  a,
-  b,
-  groupLabel,
-  itemLimit,
-  random,
-}: ItemRequest & {
-  readonly a: readonly Output[];
-  readonly b: readonly Output[];
-  readonly groupLabel: string | null;
-}): RoundItem[] {
-  const partnerOf = matchSets(a, b);
-  const lineups = [
-    ...groupBy(a, (output) =>
-      JSON.stringify([
-        output.caseId,
-        groupOf(output, groupLabel),
-        output.sample,
-      ]),
-    ).values(),
-  ].filter((lineup) => lineup.length >= 2);
-  const picked = spreadPick({
-    candidates: lineups,
-    spreadBy: (lineup) => groupOf(firstOf(lineup), groupLabel),
-    itemLimit,
-    random,
-  });
-  return drawSides(
-    picked.map((lineup) => {
-      const outputs = [...lineup].sort((x, y) => (x.voice < y.voice ? -1 : 1));
+    picked.map((output) => {
+      const bOutput = bOutputFor(output);
       return {
-        first: firstOf(outputs),
-        a: outputs.map(voiceOutput),
-        b: outputs.map((output) => voiceOutput(partnerOf(output))),
-        labels: commonLabels(outputs),
+        example: output,
+        a: [speakerOutput(output)],
+        b: [speakerOutput(bOutput)],
+        labels: output.labels,
+        speakerDescription: bOutput.speakerDescription,
       };
     }),
-    random,
   );
 }
 
-interface SidePair {
-  /**
-   * One output of the item, read for the case, sample, and context all its
-   * outputs share.
-   */
-  readonly first: Output;
-  readonly a: VoiceOutput[];
-  readonly b: VoiceOutput[];
+/**
+ * Build lineup items, drawn at random: each shows, for one case and
+ * sample, every speaker from set A against the same speakers from set B,
+ * on random sides. A case with one speaker has nothing to compare and
+ * gives no item.
+ */
+export function lineupItems({ a, b, itemLimit }: ItemRequest): RoundItem[] {
+  const bOutputFor = matchSets(a, b);
+  // One lineup per case and sample, holding every speaker's output.
+  const lineups = new Map<string, Output[]>();
+  for (const output of a) {
+    const key = JSON.stringify([output.caseId, output.sample]);
+    lineups.set(key, [...(lineups.get(key) ?? []), output]);
+  }
+  const comparable = [...lineups.values()].filter(
+    (lineup) => lineup.length >= 2,
+  );
+  const picked = shuffle(comparable).slice(0, itemLimit);
+  return drawSides(
+    picked.map((lineup) => {
+      const outputs = [...lineup].sort((x, y) =>
+        x.speaker < y.speaker ? -1 : 1,
+      );
+      return {
+        example: firstOf(outputs),
+        a: outputs.map(speakerOutput),
+        b: outputs.map((output) => speakerOutput(bOutputFor(output))),
+        labels: commonLabels(outputs),
+        speakerDescription: null,
+      };
+    }),
+  );
+}
+
+interface ItemBeforeSides {
+  /** Any one output of the item, read for the case it shows. */
+  readonly example: Output;
+  readonly a: SpeakerOutput[];
+  readonly b: SpeakerOutput[];
   readonly labels: Labels;
+  readonly speakerDescription: string | null;
 }
 
 /** Put set A on a random side of each item. */
-function drawSides(
-  pairs: readonly SidePair[],
-  random: () => number,
-): RoundItem[] {
-  return pairs.map(({ first, a, b, labels }) => {
-    const leftSet = random() < 0.5 ? "a" : "b";
+function drawSides(items: readonly ItemBeforeSides[]): RoundItem[] {
+  return items.map(({ example, a, b, labels, speakerDescription }) => {
+    const leftSet = Math.random() < 0.5 ? "a" : "b";
     return {
-      caseId: first.caseId,
-      sample: first.sample,
-      context: first.context,
+      caseId: example.caseId,
+      sample: example.sample,
+      context: example.context,
       labels,
+      speakerDescription,
       leftSet,
       left: leftSet === "a" ? a : b,
       right: leftSet === "a" ? b : a,
@@ -128,12 +100,22 @@ function commonLabels(outputs: readonly Output[]): Labels {
   );
 }
 
-function voiceOutput(output: Output): VoiceOutput {
-  return { voice: output.voice, text: output.text };
+function speakerOutput(output: Output): SpeakerOutput {
+  return { speaker: output.speaker, text: output.text };
 }
 
 function firstOf<T>(items: readonly T[]): T {
   const first = items[0];
   if (first === undefined) throw new Error("Expected at least one item.");
   return first;
+}
+
+function shuffle<T>(items: readonly T[]): T[] {
+  const remaining = [...items];
+  const shuffled: T[] = [];
+  while (remaining.length > 0) {
+    const index = Math.floor(Math.random() * remaining.length);
+    shuffled.push(...remaining.splice(index, 1));
+  }
+  return shuffled;
 }

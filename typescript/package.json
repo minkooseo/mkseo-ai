@@ -22,7 +22,8 @@
     "src/**/*.ts",
     "!src/**/__tests__/**",
     "src/client/local-models.json",
-    "src/human-eval/AGENT-GUIDE.md"
+    "src/human-eval/AGENT-GUIDE.md",
+    "src/human-eval/session/grading-page.html"
   ],
   "scripts": {
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",

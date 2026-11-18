@@ -5,9 +5,6 @@ import type { HumanEvalResult, WinCounts } from "./result.ts";
 export function formatResult(result: HumanEvalResult): string {
   const counts = (wins: WinCounts) =>
     `${wins.aWins} / ${wins.bWins} / ${wins.ties}`;
-  const tags = sortedEntries(result.byTag).map(
-    ([tag, wins]) => `  ${tag}: ${counts(wins)}`,
-  );
   const labels = sortedEntries(result.byLabel).flatMap(([name, values]) =>
     sortedEntries(values).map(
       ([value, wins]) => `  ${name}=${value}: ${counts(wins)}`,
@@ -15,13 +12,12 @@ export function formatResult(result: HumanEvalResult): string {
   );
   const kind = result.kind === "pair" ? "Pair" : "Lineup";
   return [
-    `${kind} round, ${result.choices} choices`,
+    `${kind} round, ${result.choiceCount} choices`,
     `  A: ${result.a}`,
     `  B: ${result.b}`,
     `A won ${result.aWins}, B won ${result.bWins}, ties ${result.ties}.`,
     `Sign test p-value (ties left out): ${formatPValue(result.pValue)}`,
     "A p-value of at most 0.05 means the gap is unlikely to be luck.",
-    ...(tags.length > 0 ? ["", "Tags (A wins / B wins / ties):", ...tags] : []),
     "",
     "By label (A wins / B wins / ties):",
     ...(labels.length > 0 ? labels : ["  none"]),

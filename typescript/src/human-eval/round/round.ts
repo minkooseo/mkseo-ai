@@ -2,9 +2,9 @@
 import { z } from "zod";
 import { labelsSchema } from "../outputs/output.ts";
 
-const voiceOutputSchema = z.strictObject({
+const speakerOutputSchema = z.strictObject({
   /** Who wrote the output; e.g. 'formal'. */
-  voice: z.string(),
+  speaker: z.string(),
   /** The output; e.g. 'Sorry the train was late.'. */
   text: z.string(),
 });
@@ -15,25 +15,29 @@ const itemSchema = z.strictObject({
   caseId: z.string(),
   /** The sample number shown on both sides; e.g. 1. */
   sample: z.int().positive(),
-  /** What the person reads to grasp the case; e.g. the user's message. */
+  /** What the person reads to grasp the case; e.g. 'I lost my keys.'. */
   context: z.string(),
   /** Labels all outputs in the item share; e.g. { task: 'reply' }. */
   labels: labelsSchema,
-  /** The output set shown on the left; never printed; e.g. 'b'. */
+  /**
+   * What a pair item's speaker is meant to sound like; null on a lineup
+   * item or without descriptions; e.g. 'Formal. Short sentences.'.
+   */
+  speakerDescription: z.string().nullable(),
+  /** The output set shown on the left, never shown to the person; e.g. 'b'. */
   leftSet: z.enum(["a", "b"]),
-  /** Outputs on the left, one per voice, in voice name order. */
-  left: z.array(voiceOutputSchema).min(1),
-  /** The same voices' outputs from the other output set. */
-  right: z.array(voiceOutputSchema).min(1),
+  /** Outputs on the left, one per speaker, in speaker name order. */
+  left: z.array(speakerOutputSchema).min(1),
+  /** The same speakers' outputs from the other output set. */
+  right: z.array(speakerOutputSchema).min(1),
 });
 
-/**
- * The items to show. Each item also notes which output set is on the
- * left; pages never print that.
- */
+/** A saved round: the items to show, in order, and the sets compared. */
 export const roundSchema = z.strictObject({
-  /** 'pair' compares one voice; 'lineup' compares a group of voices. */
+  /** 'pair' shows one speaker per side; 'lineup' shows every speaker. */
   kind: z.enum(["pair", "lineup"]),
+  /** What the grader answers on every item; e.g. 'Which reply is kinder?'. */
+  question: z.string().min(1),
   /** Folder of output set A, relative to the round; e.g. '../run-1'. */
   a: z.string(),
   /** Folder of output set B, relative to the round; e.g. '../run-2'. */
@@ -44,4 +48,4 @@ export const roundSchema = z.strictObject({
 
 export type Round = z.infer<typeof roundSchema>;
 export type RoundItem = z.infer<typeof itemSchema>;
-export type VoiceOutput = z.infer<typeof voiceOutputSchema>;
+export type SpeakerOutput = z.infer<typeof speakerOutputSchema>;

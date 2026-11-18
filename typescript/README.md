@@ -129,21 +129,23 @@ model-client retries.
 ## Human evaluation
 
 `@mkseo/ai/human-eval` helps a person tune a prompt by blind A/B comparisons. A
-person, or an agent standing in for them, picks between the model's outputs; the
-library never scores an output or picks a side. It runs in Node only, so the
-main `@mkseo/ai` entry does not load it.
+person picks between the model's outputs on a grading page that opens in the
+browser; the library never scores an output or picks a side. It needs Node, so
+the main `@mkseo/ai` entry, which Expo apps load, does not include it. Opening
+the page in the browser works on macOS only.
 
-A project describes its cases, voices, and model call, and passes them to
-`runHumanEvalCli`. That gives it the commands `generate`, `judge`, `show`, and
-`choose`. Each runs once and exits; none waits for key presses, so an agent can
-run them and relay pages and replies in a chat.
-[AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation for
-the agent that runs it. Each field is described in
+A project describes its cases, speakers, and model call, and passes them to
+`runHumanEvalCli`. That gives it the commands `generate`, `judge`, and `show`.
+`judge` serves the grading page from this machine and ends when every item has a
+choice; `show` reopens an unfinished round. `generate` saves each speaker's
+description with its output, and a pair item shows the one from set B, the newer
+set. [AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation
+for the agent that runs it. Each field is described in
 [project.ts](src/human-eval/project.ts).
 
 ### Tune your own prompt
 
-One prompt, one voice, and three cases
+One prompt, one speaker, and two cases
 ([note-summary-project.ts](examples/note-summary-project.ts)):
 
 ```ts
@@ -158,17 +160,20 @@ const client = createModelClient({
 // The prompt being tuned. Edit it, run generate again, then compare.
 const instructions = "Summarize the note in one short sentence.";
 
-/** One prompt, one voice: the smallest human evaluation project. */
+/** One prompt, one speaker: the smallest human evaluation project. */
 export const project: HumanEvalProject = {
   cases: [
-    { id: "train", split: "tuning", labels: {}, context: "Train at 9:30." },
-    { id: "rent", split: "tuning", labels: {}, context: "Rent up 5% in May." },
-    { id: "party", split: "heldout", labels: {}, context: "Party Sat 7pm." },
+    { id: "train", labels: {}, context: "Train at 9:30." },
+    { id: "rent", labels: {}, context: "Rent up 5% in May." },
   ],
-  voices: () => [{ name: "summary", labels: {} }],
+  speakers: () => [{ name: "summary", labels: {} }],
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
-  groupLabel: null,
+  questions: {
+    pair: "Which summary is better?",
+    lineup: "Which side sounds more like different summaries?",
+  },
+  describeSpeaker: null,
 };
 ```
 
@@ -188,42 +193,45 @@ pnpm tune-example generate --out /tmp/notes/before
 pnpm tune-example generate --out /tmp/notes/after
 pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after \
   --out /tmp/notes/round-1
-pnpm tune-example choose --out /tmp/notes/round-1 --reply="1 r, 2 r long"
 ```
 
-Every `--out` must be a new or empty folder. Tags are single words. Pass a reply
-joined to the flag with `=`, as above, so a reply that starts with `-` is not
-read as an option; the [agent guide](src/human-eval/AGENT-GUIDE.md) shows how to
-pass any reply safely.
+Every `--out` must be a new or empty folder. `judge` opens the grading page and
+waits; pick a side for each item, write a reason, and the result prints when the
+last item has a choice.
 
-With one voice, `judge --kind lineup` refuses with a one-line message.
+With one speaker, `judge --kind lineup` refuses with a one-line message.
 
-### Several voices
+### Several speakers
 
-Only the voices change when one prompt responds in several tones. Each case gets
-every voice; with `groupLabel: null`, a lineup compares all voices that
-responded to a case:
+Only the speakers change when one prompt responds in several tones. Each case
+gets every speaker, and a lineup compares all speakers that responded to a case:
 
 ```ts
 const tones = ["formal", "casual", "playful"];
 
 export const project: HumanEvalProject = {
   // cases as above
-  voices: () => tones.map((tone) => ({ name: tone, labels: {} })),
-  generate: ({ case: note, voice }) =>
+  speakers: () => tones.map((tone) => ({ name: tone, labels: {} })),
+  generate: ({ case: note, speaker }) =>
     client.text({
-      instructions: `${instructions} Use a ${voice.name} tone.`,
+      instructions: `${instructions} Use a ${speaker.name} tone.`,
       prompt: note.context,
       maxOutputTokens: 128,
     }),
-  groupLabel: null,
+  questions: {
+    pair: "Which reply is better?",
+    lineup: "Which side sounds more like different people?",
+  },
+  describeSpeaker: ({ speaker }) => `A ${speaker.name} tone.`,
 };
 ```
 
-With many voices, give each a label such as `{ group: "calm" }` and set
-`groupLabel: "group"`, so a lineup stays within a group. A project with its own
-case fields writes `HumanEvalProject<MyCase>`, and `generate` receives those
-fields back.
+`questions` is what the grading page asks on each kind of round.
+`describeSpeaker` says what a speaker is meant to sound like. `generate` saves
+it with each output, and a pair item shows set B's beside both outputs. Labels
+on cases and speakers, such as `{ tone: "calm" }`, break the result down per
+value. A project with its own case fields writes `HumanEvalProject<MyCase>`, and
+`generate` receives those fields back.
 
 ## Expo and editable consumption
 

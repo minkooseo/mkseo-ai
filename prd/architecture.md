@@ -15,6 +15,8 @@ TypeScript caller -> client factory -> generation -> compatible transport
                                  schema contract + retry  oMLX / LM Studio
 
 TypeScript project -> human-eval CLI -> session -> choices -> round -> outputs
+                                           |
+                                      local-server
 ```
 
 ## Python package
@@ -93,6 +95,21 @@ runtime imports neither Node nor Expo and receives fetch from its caller. The
 Node-only `typescript/demo.ts` composes the public API and demonstrates its
 plain string output and the three object-output modes.
 
+### Local server
+
+`typescript/src/local-server/` is a small Node-only web server that knows
+nothing about what it serves. It is not a package export; human evaluation
+imports it directly.
+
+- `local-server.ts`: `startLocalServer` binds 127.0.0.1 on a free port and
+  answers the GET and POST routes its caller supplies with a page or JSON. It
+  refuses requests that name another host and POST bodies that are not JSON. A
+  body over 1 MB, or one the client stops sending, is dropped without a reply
+  and is not an error. Only a route that throws reports an error to the caller.
+  `close` stops it once the requests in progress are answered.
+- `open-browser.ts`: `openBrowser` opens an address with macOS `open` and throws
+  on any other system.
+
 ### Human evaluation
 
 `typescript/src/human-eval/` is the Node-only human evaluation runtime, exported
@@ -101,32 +118,36 @@ one way: `cli/` → `session/` → `choices/` → `round/` → `outputs/`. The t
 files may be imported by any folder, and only `human-eval.ts` imports `cli/`.
 
 - Top level: `human-eval.ts` is the entry, with `runHumanEvalCli` and the public
-  types. `project.ts` defines what a project supplies: cases, voices, the model
-  call, and the output and label types. `file-io.ts` reads and checks JSON,
-  writes files whole through a temporary file, and refuses an `--out` folder
-  that is not empty; `group-by.ts` groups items by a key; `usage-error.ts` marks
+  types. `project.ts` defines what a project supplies: cases, speakers, the
+  model call, the speaker description, and the output and label types.
+  `file-io.ts` reads and checks JSON, writes files whole through a temporary
+  file, and refuses an `--out` folder that is not empty; `usage-error.ts` marks
   problems the person can fix. `AGENT-GUIDE.md` ships with the package and tells
   an agent how to run an evaluation.
 - `outputs/` produces an output set. `plan.ts` checks the project and lists the
   model calls; `generate.ts` makes them through the shared `ConcurrencyGate` and
-  saves the outputs; `output.ts` owns `outputs.jsonl` and matches two output
-  sets.
+  saves the outputs with their speaker descriptions; `output.ts` owns
+  `outputs.jsonl` and matches two output sets.
 - `round/` is what the person is shown. `round.ts` owns the saved round schema;
-  `items.ts` draws pair and lineup items with `spread-pick.ts`; `page.ts` writes
-  a page as Markdown.
-- `choices/` is what the person picked and what it adds up to. `choices.ts`
-  parses replies; `result.ts` counts a finished round with `sign-test.ts`;
-  `format-result.ts` describes the result.
-- `session/` is one comparison in progress: a round plus the choices so far.
-  `session.ts` picks the current page and checks saved choices; `files.ts` reads
-  and writes `round.json`, `choices.json`, and `result.json`; `commands.ts` runs
-  `judge`, `show`, and `choose`.
+  `items.ts` draws pair and lineup items at random, a pair item taking set B's
+  speaker description; `round-view.ts` builds the blind view the page shows.
+- `choices/` is what the person picked and what it adds up to. `choices.ts` owns
+  the choice schema; `decisions.ts` turns each choice into the winning set with
+  the item's case, speakers, labels, and reason; `result.ts` counts the
+  decisions with `sign-test.ts`; `format-result.ts` describes the result.
+- `session/` is one round in progress: a round plus the choices so far.
+  `session.ts` adds a choice and checks saved choices; `files.ts` reads and
+  writes `round.json` and `choices.json`, and for a finished round `result.json`
+  and `decisions.json`; `serving.ts` marks the round with `serving.json` while a
+  process serves it, so a second one refuses; `grading.ts` serves
+  `grading-page.html` through the local server, saving each choice as it
+  arrives; `commands.ts` runs `judge` and `show`.
 - `cli/` is the command line only: `cli.ts` sends each command to its code, and
   `options.ts` parses flags.
 
-`typescript/examples/` holds the smallest project, one prompt and one voice, run
-by the package's `tune-example` command. [Human evaluation](human-eval.md) owns
-the behavior.
+`typescript/examples/` holds the smallest project, one prompt and one speaker,
+run by the package's `tune-example` command. [Human evaluation](human-eval.md)
+owns the behavior.
 
 Each package ships its own local preset JSON. The root
 `scripts/check-presets.js` checks that the catalogs agree; installed packages

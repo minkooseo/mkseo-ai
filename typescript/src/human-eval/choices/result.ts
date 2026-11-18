@@ -1,6 +1,7 @@
 // The result of a finished round: wins per output set and the sign test.
-import type { Round, RoundItem } from "../round/round.ts";
+import type { Round } from "../round/round.ts";
 import type { Choice } from "./choices.ts";
+import { decisionsOf, type Decision, type Winner } from "./decisions.ts";
 import { signTest } from "./sign-test.ts";
 
 /** How often the person picked output set A, set B, or a tie. */
@@ -20,13 +21,11 @@ export interface HumanEvalResult extends WinCounts {
   readonly a: string;
   /** Folder of output set B, relative to the round; e.g. '../run-2'. */
   readonly b: string;
-  /** Number of choices; e.g. 40. */
-  readonly choices: number;
+  /** How many items got a choice; e.g. 40. */
+  readonly choiceCount: number;
   /** Two-sided sign test p-value with ties left out; e.g. 0.03. */
   readonly pValue: number;
-  /** Wins among the items that carry each tag; e.g. { stiff: ... }. */
-  readonly byTag: Readonly<Record<string, WinCounts>>;
-  /** Wins per label name, then per value; e.g. { group: { calm: ... } }. */
+  /** Wins per label name, then per value; e.g. { tone: { calm: ... } }. */
   readonly byLabel: Readonly<
     Record<string, Readonly<Record<string, WinCounts>>>
   >;
@@ -47,47 +46,26 @@ export function resultOf({
     kind: round.kind,
     a: round.a,
     b: round.b,
-    ...countItems(round.items, choices),
+    ...countDecisions(decisionsOf({ round, choices })),
   };
 }
 
-type Winner = "a" | "b" | "tie";
-
-/** One decided item, reduced to what the counts need. */
-interface ItemRow {
-  readonly winner: Winner;
-  readonly tags: readonly string[];
-  readonly labels: Readonly<Record<string, string>>;
-}
-
-function countItems(items: readonly RoundItem[], choices: readonly Choice[]) {
-  const rows: ItemRow[] = items.map((item, index) => {
-    const choice = choiceOn(choices, index + 1);
-    return {
-      winner: winnerOf(item, choice),
-      tags: choice.tags,
-      labels: item.labels,
-    };
-  });
-  const total = countWins(rows.map((row) => row.winner));
-  // Grouping uses Maps, not plain objects, so tags or labels named like
+function countDecisions(decided: readonly Decision[]) {
+  const total = countWins(decided.map((one) => one.winner));
+  // Grouping uses Maps, not plain objects, so labels named like
   // "__proto__" are counted like any other word.
-  const tags = new Map<string, Winner[]>();
   const labels = new Map<string, Map<string, Winner[]>>();
-  for (const { winner, tags: rowTags, labels: rowLabels } of rows) {
-    for (const tag of rowTags)
-      tags.set(tag, [...(tags.get(tag) ?? []), winner]);
-    for (const [name, value] of Object.entries(rowLabels)) {
+  for (const { winner, labels: itemLabels } of decided) {
+    for (const [name, value] of Object.entries(itemLabels)) {
       const values = labels.get(name) ?? new Map<string, Winner[]>();
       labels.set(name, values);
       values.set(value, [...(values.get(value) ?? []), winner]);
     }
   }
   return {
-    choices: items.length,
+    choiceCount: decided.length,
     ...total,
     pValue: signTest({ aWins: total.aWins, bWins: total.bWins }),
-    byTag: countEach(tags),
     byLabel: Object.fromEntries(
       [...labels].map(([name, values]) => [name, countEach(values)]),
     ),
@@ -108,21 +86,4 @@ function countWins(winners: readonly Winner[]): WinCounts {
     bWins: winners.filter((winner) => winner === "b").length,
     ties: winners.filter((winner) => winner === "tie").length,
   };
-}
-
-function winnerOf(item: RoundItem, choice: Choice): Winner {
-  switch (choice.picked) {
-    case "tie":
-      return "tie";
-    case "left":
-      return item.leftSet;
-    case "right":
-      return item.leftSet === "a" ? "b" : "a";
-  }
-}
-
-function choiceOn(choices: readonly Choice[], item: number): Choice {
-  const choice = choices.find((one) => one.item === item);
-  if (choice === undefined) throw new Error(`Item ${item} has no choice.`);
-  return choice;
 }

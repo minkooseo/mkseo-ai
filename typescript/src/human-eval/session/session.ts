@@ -1,5 +1,4 @@
-// A session is a round plus the choices made so far: which page comes next
-// and whether the saved choices fit the round.
+// A session is a round plus the choices made so far.
 import type { Choice } from "../choices/choices.ts";
 import type { Round } from "../round/round.ts";
 import { UsageError } from "../usage-error.ts";
@@ -11,19 +10,30 @@ export interface Session {
   readonly choices: readonly Choice[];
 }
 
-/** How many items one page shows: few enough to read in one go. */
-const pageSizes: Readonly<Record<Round["kind"], number>> = {
-  pair: 5,
-  lineup: 1,
-};
+/**
+ * The session with one more choice. Throws a one-line message when the item
+ * is not in the round, already has a choice, or the reason is blank.
+ */
+export function addChoice(session: Session, choice: Choice): Session {
+  const { round, choices } = session;
+  if (choice.item > round.items.length) {
+    throw new UsageError(
+      `There is no item ${choice.item}; the round has ` +
+        `${round.items.length} items.`,
+    );
+  }
+  if (choices.some((saved) => saved.item === choice.item)) {
+    throw new UsageError(`Item ${choice.item} already has a choice.`);
+  }
+  if (choice.reason.trim() === "") {
+    throw new UsageError("Write a reason for the pick.");
+  }
+  return { round, choices: [...choices, choice] };
+}
 
-/** The item numbers of the next page: the first items with no choice yet. */
-export function currentPage(session: Session): number[] {
-  const chosen = new Set(session.choices.map((choice) => choice.item));
-  return session.round.items
-    .map((_, index) => index + 1)
-    .filter((item) => !chosen.has(item))
-    .slice(0, pageSizes[session.round.kind]);
+/** True once every item of the round has a choice. */
+export function isFinished({ round, choices }: Session): boolean {
+  return choices.length === round.items.length;
 }
 
 /**

@@ -1,9 +1,11 @@
-// The files of a round folder: round.json, choices.json, and result.json.
+// The files of a round folder: round.json, choices.json, and, once the
+// round is finished, result.json and decisions.json.
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { choiceSchema, type Choice } from "../choices/choices.ts";
-import type { HumanEvalResult } from "../choices/result.ts";
+import { decisionsOf } from "../choices/decisions.ts";
+import { resultOf, type HumanEvalResult } from "../choices/result.ts";
 import { exists, readJson, writeJson } from "../file-io.ts";
 import { roundSchema, type Round } from "../round/round.ts";
 import { UsageError } from "../usage-error.ts";
@@ -12,11 +14,17 @@ import { assertValidSession, type Session } from "./session.ts";
 const roundFile = "round.json";
 const choicesFile = "choices.json";
 const resultFile = "result.json";
+const decisionsFile = "decisions.json";
 
 /** Read the session saved in `dir`. Throws when it holds no round. */
 export async function readSession(dir: string): Promise<Session> {
   if (!(await exists(join(dir, roundFile)))) {
-    throw new UsageError(`${dir} holds no round. Run judge first.`);
+    // judge writes round.json last, so a folder without it may be a round
+    // that judge never finished starting.
+    throw new UsageError(
+      `${dir} holds no round. Run judge first; if judge stopped while ` +
+        "starting this round, delete the folder and run judge again.",
+    );
   }
   const session = {
     round: await readJson(join(dir, roundFile), roundSchema),
@@ -45,12 +53,20 @@ export async function saveChoices(
   await writeJson(join(dir, choicesFile), choices);
 }
 
-/** Save the result of a finished round and return the file's path. */
-export async function saveResult(
+/**
+ * Save what a finished round adds up to: result.json with the counts, and
+ * decisions.json with each item's case, speakers, labels, winning set, and
+ * reason. Returns the result and its file's path.
+ */
+export async function saveFinished(
   dir: string,
-  result: HumanEvalResult,
-): Promise<string> {
+  session: Session,
+): Promise<{ readonly result: HumanEvalResult; readonly path: string }> {
+  // Count first, so a problem in the count saves nothing.
+  const result = resultOf(session);
+  const decisions = decisionsOf(session);
+  await writeJson(join(dir, decisionsFile), decisions);
   const path = join(dir, resultFile);
   await writeJson(path, result);
-  return path;
+  return { result, path };
 }
