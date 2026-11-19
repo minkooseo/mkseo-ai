@@ -2,9 +2,12 @@
 // project fills in.
 export { runHumanEvalCli } from "./cli/cli.ts";
 export type {
+  DescriptionField,
+  DescriptionSection,
   Output,
   HumanEvalCase,
   HumanEvalProject,
   Labels,
   Speaker,
+  SpeakerDescription,
 } from "./project.ts";

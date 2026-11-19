@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { openBrowser } from "../../../local-server/open-browser.ts";
+import type { SpeakerDescription } from "../../project.ts";
 import type { Round } from "../../round/round.ts";
 import { startSession } from "../files.ts";
 import { gradeRound } from "../grading.ts";
@@ -10,6 +11,17 @@ import { gradeRound } from "../grading.ts";
 vi.mock("../../../local-server/open-browser.ts", () => ({
   openBrowser: vi.fn(),
 }));
+
+const description: SpeakerDescription = {
+  title: "Formal",
+  sections: [
+    {
+      title: "Style",
+      display: "open",
+      fields: [{ name: "Tone", value: "Short sentences, no slang." }],
+    },
+  ],
+};
 
 const round: Round = {
   kind: "pair",
@@ -22,7 +34,7 @@ const round: Round = {
       sample: 1,
       context: "My train was 40 minutes late.",
       labels: { task: "reply" },
-      speakerDescription: "Formal. Short sentences, no slang.",
+      speakerDescription: description,
       leftSet: "a",
       left: [{ speaker: "formal", text: "That is unfortunate." }],
       right: [{ speaker: "formal", text: "I am sorry to hear it." }],
@@ -32,7 +44,7 @@ const round: Round = {
       sample: 1,
       context: "I lost my keys.",
       labels: { task: "reply" },
-      speakerDescription: "Formal. Short sentences, no slang.",
+      speakerDescription: description,
       leftSet: "b",
       left: [{ speaker: "formal", text: "Check your coat." }],
       right: [{ speaker: "formal", text: "Retrace your steps." }],
@@ -57,7 +69,7 @@ afterEach(() => {
 });
 
 describe("gradeRound", () => {
-  it("records picks with reasons and resolves with the result", async () => {
+  it("records picks and resolves with the result", async () => {
     await startSession(dir, round);
     const grading = gradeRound(dir);
     const url = await openedUrl();
@@ -93,16 +105,22 @@ describe("gradeRound", () => {
       body: { error: "The choice is not valid." },
     });
 
-    expect(
-      await send(url, { item: 2, picked: "left", reason: "Shorter." }),
-    ).toEqual({ status: 200, body: { finished: true } });
+    expect(await send(url, { item: 2, picked: "tie", reason: " " })).toEqual({
+      status: 200,
+      body: { finished: true },
+    });
+    expect(await savedChoices()).toEqual([
+      { item: 1, picked: "left", reason: "Warm. " },
+      { item: 2, picked: "tie", reason: null },
+    ]);
     const result = await grading;
-    // Item 1 has set A on the left and item 2 set B, so A and B win one each.
+    // Item 1 has set A on the left, so A wins it.
     expect(result).toMatchObject({
       choiceCount: 2,
       aWins: 1,
-      bWins: 1,
-      ties: 0,
+      bWins: 0,
+      ties: 1,
+      winner: "a",
     });
     expect(
       JSON.parse(await readFile(join(dir, "result.json"), "utf8")),

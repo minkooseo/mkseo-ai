@@ -57,6 +57,9 @@ function output({ speaker, text }: { speaker: string; text: string }): Output {
     context: "The train is late.",
     text,
     labels: { task: "reply" },
-    speakerDescription: `${speaker}, as of set ${text}.`,
+    speakerDescription: {
+      title: `${speaker}, as of set ${text}`,
+      sections: [],
+    },
   };
 }

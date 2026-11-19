@@ -11,6 +11,13 @@ export interface HumanEvalCase {
   /**
    * What the person reads to grasp the case: one message or a whole
    * conversation; e.g. 'My train was 40 minutes late.'.
+   *
+   * The grading page reads each line by its start: "### " makes a heading,
+   * "- " a list item (lines in a row form one list), and "> " a highlighted
+   * quote (lines in a row form one quote, line breaks kept). Any other line
+   * is a plain paragraph, so text without these starts shows as
+   * paragraphs. Blank lines are skipped: they neither show nor split a list
+   * or quote. There is no inline markup such as **bold**.
    */
   readonly context: string;
   /** Names and values for breakdowns; e.g. { task: 'reply' }. */
@@ -41,9 +48,44 @@ export interface Output {
   readonly labels: Labels;
   /**
    * What the speaker was meant to sound like when this output was made, or
-   * null without descriptions; e.g. 'Formal. Short sentences, no slang.'.
+   * null when the project has no descriptions.
    */
-  readonly speakerDescription: string | null;
+  readonly speakerDescription: SpeakerDescription | null;
+}
+
+/**
+ * What a speaker is meant to sound like, as the grading page shows it: a
+ * title, then sections of named fields.
+ */
+export interface SpeakerDescription {
+  /** The top line; e.g. 'Chaehee · 22, woman · over-the-top praise group'. */
+  readonly title: string;
+  /** The sections in the order shown. */
+  readonly sections: readonly DescriptionSection[];
+}
+
+/** One titled group of fields in a speaker description. */
+export interface DescriptionSection {
+  /** The section's heading; e.g. 'Speech style'. */
+  readonly title: string;
+  /**
+   * 'open' always shows the fields; 'collapsed' hides them until the
+   * grader opens the section, for long detail; e.g. 'collapsed'.
+   */
+  readonly display: "open" | "collapsed";
+  /** The fields in the order shown. */
+  readonly fields: readonly DescriptionField[];
+}
+
+/** One named value in a description section. */
+export interface DescriptionField {
+  /** What the value is about; e.g. 'Tone'. */
+  readonly name: string;
+  /**
+   * One text, shown with its line breaks, or several shown as a list;
+   * e.g. 'Warm, short sentences.' or ['No slang.', 'No emoji.'].
+   */
+  readonly value: string | readonly string[];
 }
 
 /**
@@ -72,9 +114,15 @@ export interface HumanEvalProject<C extends HumanEvalCase = HumanEvalCase> {
   };
   /**
    * What a speaker is meant to sound like, saved with each output when it
-   * is made, so it matches the files that made it. E.g. 'Formal. Short
-   * sentences, no slang.'. Null when the project has no descriptions.
+   * is made, so it matches the files that made it. E.g. { title: 'Formal',
+   * sections: [{ title: 'Style', display: 'open', fields: [{ name:
+   * 'Tone', value: 'Short sentences, no slang.' }] }] }. Null when the
+   * project has no descriptions.
    */
   readonly describeSpeaker:
-    ((input: { readonly case: C; readonly speaker: Speaker }) => string) | null;
+    | ((input: {
+        readonly case: C;
+        readonly speaker: Speaker;
+      }) => SpeakerDescription)
+    | null;
 }

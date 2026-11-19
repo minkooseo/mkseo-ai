@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Labels, Output } from "../../project.ts";
+import type { Labels, Output, SpeakerDescription } from "../../project.ts";
 import { lineupItems, pairItems } from "../items.ts";
 
 beforeEach(() => {
@@ -57,7 +57,7 @@ describe("pairItems", () => {
           caseId: "c1",
           speaker: "formal",
           text: "A",
-          description: "Old.",
+          description: { title: "Old.", sections: [] },
         }),
       ];
       const b = [
@@ -65,14 +65,14 @@ describe("pairItems", () => {
           caseId: "c1",
           speaker: "formal",
           text: "B",
-          description: "New.",
+          description: { title: "New.", sections: [] },
         }),
       ];
       vi.spyOn(Math, "random").mockReturnValue(coin);
       const [item] = pairItems({ a, b, itemLimit: 1 });
       expect([item?.leftSet, item?.speakerDescription]).toEqual([
         leftSet,
-        "New.",
+        { title: "New.", sections: [] },
       ]);
     },
   );
@@ -148,7 +148,7 @@ function output({
   speaker: string;
   tone?: string;
   text: string;
-  description?: string | null;
+  description?: SpeakerDescription | null;
 }): Output {
   const labels: Labels = tone === undefined ? {} : { tone };
   return {

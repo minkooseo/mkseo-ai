@@ -19,7 +19,7 @@ describe("resultOf", () => {
       choices: [
         { item: 2, picked: "right", reason: "Warm, short." },
         { item: 1, picked: "left", reason: "warm" },
-        { item: 3, picked: "tie", reason: "Same." },
+        { item: 3, picked: "tie", reason: null },
       ],
     });
     expect(result).toEqual({
@@ -30,7 +30,7 @@ describe("resultOf", () => {
       aWins: 2,
       bWins: 0,
       ties: 1,
-      pValue: 0.5,
+      winner: "a",
       byLabel: {
         tone: {
           formal: { aWins: 2, bWins: 0, ties: 0 },
@@ -38,6 +38,27 @@ describe("resultOf", () => {
         },
       },
     });
+  });
+
+  it.each([
+    { picks: ["left", "right", "right", "tie"], winner: "b" },
+    { picks: ["left", "right", "tie", "tie"], winner: null },
+  ] as const)("gives the majority winner of $picks", ({ picks, winner }) => {
+    const result = resultOf({
+      round: {
+        kind: "pair",
+        question: "Which reply is kinder?",
+        a: "../a",
+        b: "../b",
+        items: picks.map(() => roundItem({ leftSet: "a", tone: "formal" })),
+      },
+      choices: picks.map((picked, index) => ({
+        item: index + 1,
+        picked,
+        reason: "Warmer.",
+      })),
+    });
+    expect(result.winner).toBe(winner);
   });
 
   it("counts labels named like object built-ins", () => {

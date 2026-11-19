@@ -12,7 +12,7 @@ describe("formatResult", () => {
         aWins: 2,
         bWins: 0,
         ties: 1,
-        pValue: 0.5,
+        winner: "a",
         byLabel: {
           tone: {
             formal: { aWins: 2, bWins: 0, ties: 0 },
@@ -26,8 +26,7 @@ describe("formatResult", () => {
         "  A: ../a",
         "  B: ../b",
         "A won 2, B won 0, ties 1.",
-        "Sign test p-value (ties left out): 0.500",
-        "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+        "A wins: it has more wins than B.",
         "",
         "By label (A wins / B wins / ties):",
         "  tone=casual: 0 / 0 / 1",
@@ -36,27 +35,41 @@ describe("formatResult", () => {
     );
   });
 
-  it("says when a p-value is very small and there are no labels", () => {
+  it.each([
+    {
+      aWins: 1,
+      bWins: 3,
+      winner: "b",
+      counts: "A won 1, B won 3, ties 1.",
+      line: "B wins: it has more wins than A.",
+    },
+    {
+      aWins: 2,
+      bWins: 2,
+      winner: null,
+      counts: "A won 2, B won 2, ties 1.",
+      line: "No winner: A and B have as many wins.",
+    },
+  ] as const)("says $line", ({ aWins, bWins, winner, counts, line }) => {
     expect(
       formatResult({
         kind: "lineup",
         a: "../a",
         b: "../b",
-        choiceCount: 12,
-        aWins: 0,
-        bWins: 12,
-        ties: 0,
-        pValue: 0.00048828125,
+        choiceCount: 5,
+        aWins,
+        bWins,
+        ties: 1,
+        winner,
         byLabel: {},
       }),
     ).toBe(
       [
-        "Lineup round, 12 choices",
+        "Lineup round, 5 choices",
         "  A: ../a",
         "  B: ../b",
-        "A won 0, B won 12, ties 0.",
-        "Sign test p-value (ties left out): below 0.001",
-        "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+        counts,
+        line,
         "",
         "By label (A wins / B wins / ties):",
         "  none",

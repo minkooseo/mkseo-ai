@@ -1,13 +1,12 @@
 // The grading page: a local web page where the person decides a round's
 // items one at a time, each choice saved as it arrives.
 import { readFile } from "node:fs/promises";
-import { z } from "zod";
 import {
   startLocalServer,
   type Reply,
 } from "../../local-server/local-server.ts";
 import { openBrowser } from "../../local-server/open-browser.ts";
-import { choiceSchema } from "../choices/choices.ts";
+import { choiceRequestSchema } from "../choices/choices.ts";
 import type { HumanEvalResult } from "../choices/result.ts";
 import { roundView } from "../round/round-view.ts";
 import { UsageError } from "../usage-error.ts";
@@ -93,10 +92,6 @@ export async function gradeRound(dir: string): Promise<HumanEvalResult> {
     await releaseServing(dir);
   }
 }
-
-// What the page sends: a choice whose reason addChoice checks, so a blank
-// reason gets its own message.
-const choiceRequestSchema = choiceSchema.extend({ reason: z.string() });
 
 function jsonReply(status: number, body: unknown): Reply {
   return { kind: "json", status, body };

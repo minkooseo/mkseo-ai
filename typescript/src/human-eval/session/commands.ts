@@ -18,7 +18,7 @@ export interface RoundRequest {
   readonly a: string;
   /** Folder of output set B; e.g. '/work/run-2'. */
   readonly b: string;
-  /** Most items to show; e.g. 40. */
+  /** Most items to show; e.g. 5. */
   readonly itemLimit: number;
   /** Folder for the round files; e.g. '/work/round-1'. */
   readonly out: string;

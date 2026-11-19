@@ -1,6 +1,6 @@
 // The saved round: the items the person decides on, in the order shown.
 import { z } from "zod";
-import { labelsSchema } from "../outputs/output.ts";
+import { labelsSchema, speakerDescriptionSchema } from "../outputs/output.ts";
 
 const speakerOutputSchema = z.strictObject({
   /** Who wrote the output; e.g. 'formal'. */
@@ -10,27 +10,36 @@ const speakerOutputSchema = z.strictObject({
 });
 
 /** One pair or lineup item: set A and set B shown as Left and Right. */
-const itemSchema = z.strictObject({
-  /** The case shown; e.g. 'late-train'. */
-  caseId: z.string(),
-  /** The sample number shown on both sides; e.g. 1. */
-  sample: z.int().positive(),
-  /** What the person reads to grasp the case; e.g. 'I lost my keys.'. */
-  context: z.string(),
-  /** Labels all outputs in the item share; e.g. { task: 'reply' }. */
-  labels: labelsSchema,
-  /**
-   * What a pair item's speaker is meant to sound like; null on a lineup
-   * item or without descriptions; e.g. 'Formal. Short sentences.'.
-   */
-  speakerDescription: z.string().nullable(),
-  /** The output set shown on the left, never shown to the person; e.g. 'b'. */
-  leftSet: z.enum(["a", "b"]),
-  /** Outputs on the left, one per speaker, in speaker name order. */
-  left: z.array(speakerOutputSchema).min(1),
-  /** The same speakers' outputs from the other output set. */
-  right: z.array(speakerOutputSchema).min(1),
-});
+const itemSchema = z
+  .strictObject({
+    /** The case shown; e.g. 'late-train'. */
+    caseId: z.string(),
+    /** The sample number shown on both sides; e.g. 1. */
+    sample: z.int().positive(),
+    /** What the person reads to grasp the case; e.g. 'I lost my keys.'. */
+    context: z.string(),
+    /** Labels all outputs in the item share; e.g. { task: 'reply' }. */
+    labels: labelsSchema,
+    /**
+     * What a pair item's speaker is meant to sound like, from set B's
+     * output; null on a lineup item or without descriptions.
+     */
+    speakerDescription: speakerDescriptionSchema.nullable(),
+    /**
+     * The output set shown on the left, never shown to the person; e.g. 'b'.
+     */
+    leftSet: z.enum(["a", "b"]),
+    /** Outputs on the left, one per speaker, in speaker name order. */
+    left: z.array(speakerOutputSchema).min(1),
+    /** The same speakers' outputs from the other output set. */
+    right: z.array(speakerOutputSchema).min(1),
+  })
+  .refine(
+    ({ left, right }) =>
+      JSON.stringify(left.map((output) => output.speaker)) ===
+      JSON.stringify(right.map((output) => output.speaker)),
+    { message: "Both sides must show the same speakers in the same order." },
+  );
 
 /** A saved round: the items to show, in order, and the sets compared. */
 export const roundSchema = z.strictObject({

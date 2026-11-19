@@ -58,7 +58,16 @@ describe("runHumanEvalCli with a single speaker", () => {
         context: "My train was 40 minutes late.",
         text: "assistant on late-train!",
         labels: { task: "reply" },
-        speakerDescription: "assistant: plain and short.",
+        speakerDescription: {
+          title: "assistant",
+          sections: [
+            {
+              title: "Style",
+              display: "open",
+              fields: [{ name: "Tone", value: "Plain and short." }],
+            },
+          ],
+        },
       },
       {
         caseId: "lost-keys",
@@ -67,7 +76,16 @@ describe("runHumanEvalCli with a single speaker", () => {
         context: "I lost my keys.",
         text: "assistant on lost-keys.",
         labels: { task: "reply" },
-        speakerDescription: "assistant: plain and short.",
+        speakerDescription: {
+          title: "assistant",
+          sections: [
+            {
+              title: "Style",
+              display: "open",
+              fields: [{ name: "Tone", value: "Plain and short." }],
+            },
+          ],
+        },
       },
     ]);
   });
@@ -82,13 +100,18 @@ describe("runHumanEvalCli with a single speaker", () => {
     const url = await pageUrl(1);
 
     const state = (await (await fetch(`${url}round`)).json()) as {
-      view: { items: { context: string; speakerDescription: unknown }[] };
+      view: {
+        items: { context: string; speakerDescription: { title: string } }[];
+      };
     };
     expect(
-      state.view.items.map((item) => [item.context, item.speakerDescription]),
+      state.view.items.map((item) => [
+        item.context,
+        item.speakerDescription.title,
+      ]),
     ).toEqual([
-      ["My train was 40 minutes late.", "assistant: plain and short."],
-      ["I lost my keys.", "assistant: plain and short."],
+      ["My train was 40 minutes late.", "assistant"],
+      ["I lost my keys.", "assistant"],
     ]);
     expect(await choose(url, { item: 1, picked: "left", reason: "" })).toBe(
       400,
@@ -96,9 +119,7 @@ describe("runHumanEvalCli with a single speaker", () => {
     expect(await choose(url, { item: 1, picked: "left", reason: "warm" })).toBe(
       200,
     );
-    expect(await choose(url, { item: 2, picked: "tie", reason: "Same." })).toBe(
-      200,
-    );
+    expect(await choose(url, { item: 2, picked: "tie", reason: "" })).toBe(200);
     await judging;
 
     const result = [
@@ -106,8 +127,7 @@ describe("runHumanEvalCli with a single speaker", () => {
       "  A: ../a",
       "  B: ../b",
       "A won 1, B won 0, ties 1.",
-      "Sign test p-value (ties left out): 1.000",
-      "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+      "A wins: it has more wins than B.",
       "",
       "By label (A wins / B wins / ties):",
       "  task=reply: 1 / 0 / 1",
@@ -127,7 +147,14 @@ describe("runHumanEvalCli with a single speaker", () => {
         item: 1,
         caseId: "late-train",
         sample: 1,
-        speakers: ["assistant"],
+        context: "My train was 40 minutes late.",
+        outputs: [
+          {
+            speaker: "assistant",
+            a: "assistant on late-train!",
+            b: "B: assistant on late-train!",
+          },
+        ],
         labels: { task: "reply" },
         winner: "a",
         reason: "warm",
@@ -136,10 +163,17 @@ describe("runHumanEvalCli with a single speaker", () => {
         item: 2,
         caseId: "lost-keys",
         sample: 1,
-        speakers: ["assistant"],
+        context: "I lost my keys.",
+        outputs: [
+          {
+            speaker: "assistant",
+            a: "assistant on lost-keys.",
+            b: "B: assistant on lost-keys.",
+          },
+        ],
         labels: { task: "reply" },
         winner: "tie",
-        reason: "Same.",
+        reason: null,
       },
     ]);
 
@@ -178,8 +212,7 @@ describe("runHumanEvalCli with a single speaker", () => {
         "  A: ../a",
         "  B: ../b",
         "A won 0, B won 2, ties 0.",
-        "Sign test p-value (ties left out): 0.500",
-        "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+        "B wins: it has more wins than A.",
         "",
         "By label (A wins / B wins / ties):",
         "  task=reply: 0 / 2 / 0",
@@ -265,8 +298,7 @@ describe("runHumanEvalCli with several speakers", () => {
         "  A: ../a",
         "  B: ../b",
         "A won 1, B won 1, ties 0.",
-        "Sign test p-value (ties left out): 1.000",
-        "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+        "No winner: A and B have as many wins.",
         "",
         "By label (A wins / B wins / ties):",
         "  task=reply: 1 / 1 / 0",
@@ -378,14 +410,19 @@ describe("runHumanEvalCli generate", () => {
   });
 });
 
-// Generates output sets A and B into the work folder, leaving no log.
+// Generates output sets A and B into the work folder, leaving no log. Set
+// B's texts start with "B: ".
 async function generateBoth(
   project: HumanEvalProject,
 ): Promise<{ a: string; b: string }> {
   const a = join(work, "a");
   const b = join(work, "b");
+  const projectB: HumanEvalProject = {
+    ...project,
+    generate: async (input) => `B: ${await project.generate(input)}`,
+  };
   await runHumanEvalCli(project, ["generate", "--out", a]);
-  await runHumanEvalCli(project, ["generate", "--out", b]);
+  await runHumanEvalCli(projectB, ["generate", "--out", b]);
   logged = [];
   return { a, b };
 }
@@ -434,6 +471,15 @@ function projectWith({ speakers }: { speakers: Speaker[] }): HumanEvalProject {
       pair: "Which reply is kinder?",
       lineup: "Which side sounds more like different people?",
     },
-    describeSpeaker: ({ speaker }) => `${speaker.name}: plain and short.`,
+    describeSpeaker: ({ speaker }) => ({
+      title: speaker.name,
+      sections: [
+        {
+          title: "Style",
+          display: "open",
+          fields: [{ name: "Tone", value: "Plain and short." }],
+        },
+      ],
+    }),
   };
 }

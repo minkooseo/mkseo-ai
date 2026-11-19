@@ -14,6 +14,10 @@
         --picked: #2f6fd6;
         --picked-soft: #e5eefc;
         --error: #b3261e;
+        /* Highlighted quotes in the case; not --picked, which marks the
+           selected side. */
+        --mark: #c98a00;
+        --mark-soft: #fdf3d7;
         /* Heights of the sticky header and control bar, set by the script. */
         --header: 48px;
         --bar: 64px;
@@ -29,6 +33,8 @@
           --picked: #7aa7f5;
           --picked-soft: #1e2d48;
           --error: #f2a39c;
+          --mark: #e0b040;
+          --mark-soft: #3a3220;
           color-scheme: dark;
         }
       }
@@ -83,7 +89,8 @@
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
-      h2 {
+      h2,
+      .section-title {
         font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -92,6 +99,80 @@
       }
       #context {
         margin-bottom: 12px;
+      }
+      .ctx {
+        overflow-wrap: anywhere;
+      }
+      .ctx h3 {
+        font-size: 1.15rem;
+        margin: 0 0 4px;
+      }
+      .ctx p {
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+      .ctx ul {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin: 0 0 6px;
+        padding-left: 1.2em;
+      }
+      .ctx blockquote {
+        margin: 6px 0 0;
+        padding: 6px 10px;
+        border-left: 3px solid var(--mark);
+        background: var(--mark-soft);
+        border-radius: 4px;
+        color: var(--text);
+      }
+      /* The speaker description is long reference text, so it is set
+         smaller and tighter than the outputs being graded. */
+      #description {
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+      #description-title {
+        font-size: 0.95rem;
+        margin: 0 0 6px;
+      }
+      .description-section + .description-section {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+      }
+      summary.section-title {
+        cursor: pointer;
+        font-weight: 700;
+        margin: 0;
+      }
+      details[open] > summary.section-title {
+        margin-bottom: 4px;
+      }
+      .fields {
+        display: grid;
+        /* One fixed name column, so values line up across sections. */
+        grid-template-columns: 6.5em minmax(0, 1fr);
+        gap: 4px 10px;
+        margin: 0;
+      }
+      .fields dt {
+        /* Korean names wrap at spaces, not mid-word. */
+        word-break: keep-all;
+        color: var(--muted);
+        font-size: 0.78rem;
+        padding-top: 0.08rem;
+      }
+      .fields dd {
+        margin: 0;
+        min-width: 0;
+        color: var(--text);
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+      .fields dd ul {
+        margin: 0;
+        padding-left: 1.2em;
+        white-space: normal;
       }
       #sides {
         display: grid;
@@ -124,6 +205,16 @@
         }
         #sides.with-description .side {
           position: static;
+        }
+        .fields {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+        }
+        .fields dt {
+          max-width: none;
+        }
+        .fields dd + dt {
+          margin-top: 4px;
         }
       }
       .side {
@@ -195,6 +286,17 @@
         resize: none;
         overflow: hidden;
       }
+      /* A missing pick or reason shows in the box itself, so the bar keeps
+         its height. */
+      textarea.invalid,
+      button.invalid {
+        border-color: var(--error);
+        outline-color: var(--error);
+      }
+      textarea.invalid::placeholder {
+        color: var(--error);
+        opacity: 1;
+      }
       #message {
         color: var(--error);
         margin: 4px 0 0;
@@ -216,7 +318,7 @@
       <section id="item" hidden>
         <div id="context" class="panel">
           <h2>Case</h2>
-          <div id="context-text" class="text"></div>
+          <div id="context-text" class="ctx"></div>
         </div>
         <div id="sides">
           <div id="outputs">
@@ -240,8 +342,8 @@
             </div>
           </div>
           <div id="description" class="panel" hidden>
-            <h2>Speaker description</h2>
-            <div id="description-text" class="text"></div>
+            <h3 id="description-title"></h3>
+            <div id="description-sections"></div>
           </div>
         </div>
       </section>
@@ -263,9 +365,9 @@
           <textarea
             id="reason"
             rows="1"
-            placeholder="Reason (required)"
+            placeholder="Reason (optional for a tie)"
             title="← → pick a side, T a tie, Enter submits, Esc leaves the box"
-            aria-label="Reason (required)"
+            aria-label="Reason (optional for a tie)"
           ></textarea>
           <button type="button" id="submit" title="Enter">Submit</button>
         </div>
@@ -286,6 +388,11 @@
       };
       const byId = (id) => document.getElementById(id);
       const reasonBox = byId("reason");
+      const reasonPlaceholder = reasonBox.placeholder;
+      // Whether each description section is open, by section title. It
+      // lasts while the page is open, so a section stays as the grader
+      // left it from one item to the next.
+      const sectionOpen = new Map();
 
       async function load() {
         const response = await fetch("/round");
@@ -312,6 +419,7 @@
         state.picked = null;
         reasonBox.value = "";
         fitReasonBox();
+        clearProblem();
         setMessage("");
         render(next);
       }
@@ -320,13 +428,16 @@
         const total = state.view.items.length;
         byId("progress").textContent =
           `Item ${item.number} of ${total} · ${state.chosen.size} done`;
-        byId("context-text").textContent = item.context;
+        byId("context-text").replaceChildren(...contextNodes(item.context));
         fillSide(byId("left"), item.left);
         fillSide(byId("right"), item.right);
-        const hasDescription = item.speakerDescription !== null;
-        byId("description").hidden = !hasDescription;
-        byId("sides").classList.toggle("with-description", hasDescription);
-        byId("description-text").textContent = item.speakerDescription ?? "";
+        const description = item.speakerDescription;
+        byId("description").hidden = description === null;
+        byId("sides").classList.toggle(
+          "with-description",
+          description !== null,
+        );
+        if (description !== null) fillDescription(description);
         byId("item").hidden = false;
         showPick();
         window.scrollTo(0, 0);
@@ -350,8 +461,103 @@
         );
       }
 
+      // The case text by its line starts: "### " a heading, "- " a list
+      // item, "> " a highlighted quote, anything else a paragraph. List
+      // items and quote lines in a row join one list or quote; blank lines
+      // are skipped. Text goes in as plain text, never as HTML.
+      function contextNodes(context) {
+        const nodes = [];
+        let list = null;
+        let quote = null;
+        for (const line of context.split(/\r?\n/)) {
+          if (line.trim() === "") continue;
+          if (line.startsWith("- ")) {
+            quote = null;
+            if (list === null) {
+              list = document.createElement("ul");
+              nodes.push(list);
+            }
+            list.append(element("li", line.slice(2)));
+          } else if (line.startsWith("> ")) {
+            list = null;
+            if (quote === null) {
+              quote = document.createElement("blockquote");
+              nodes.push(quote);
+            } else {
+              quote.append(document.createElement("br"));
+            }
+            quote.append(line.slice(2));
+          } else {
+            list = null;
+            quote = null;
+            nodes.push(
+              line.startsWith("### ")
+                ? element("h3", line.slice(4))
+                : element("p", line),
+            );
+          }
+        }
+        return nodes;
+      }
+
+      function fillDescription(description) {
+        byId("description-title").textContent = description.title;
+        byId("description-sections").replaceChildren(
+          ...description.sections.map(sectionNode),
+        );
+      }
+
+      // An open section shows its title and fields; a collapsed one is a
+      // details element that starts closed and keeps the grader's
+      // open or closed choice by title.
+      function sectionNode(section) {
+        const fields = fieldList(section.fields);
+        if (section.display === "open") {
+          const block = document.createElement("div");
+          block.className = "description-section";
+          const title = element("h4", section.title);
+          title.className = "section-title";
+          block.append(title, fields);
+          return block;
+        }
+        const details = document.createElement("details");
+        details.className = "description-section";
+        details.open = sectionOpen.get(section.title) ?? false;
+        const summary = element("summary", section.title);
+        summary.className = "section-title";
+        details.append(summary, fields);
+        details.addEventListener("toggle", () =>
+          sectionOpen.set(section.title, details.open),
+        );
+        return details;
+      }
+
+      function fieldList(fields) {
+        const list = document.createElement("dl");
+        list.className = "fields";
+        for (const field of fields) {
+          const value = document.createElement("dd");
+          if (Array.isArray(field.value)) {
+            const items = document.createElement("ul");
+            items.append(...field.value.map((one) => element("li", one)));
+            value.append(items);
+          } else {
+            value.textContent = field.value;
+          }
+          list.append(element("dt", field.name), value);
+        }
+        return list;
+      }
+
+      function element(tag, text) {
+        const node = document.createElement(tag);
+        node.textContent = text;
+        return node;
+      }
+
       function pick(picked) {
         state.picked = picked;
+        clearProblem();
         setMessage("");
         showPick();
         reasonBox.focus();
@@ -371,11 +577,11 @@
       async function submit() {
         if (state.sending || state.item === null) return;
         if (state.picked === null) {
-          setMessage("Pick a side or a tie first.");
+          showProblem("Pick a side or a tie first.");
           return;
         }
-        if (reasonBox.value.trim() === "") {
-          setMessage("Write a reason for the pick.");
+        if (state.picked !== "tie" && reasonBox.value.trim() === "") {
+          showProblem("Write a reason for the pick.");
           reasonBox.focus();
           return;
         }
@@ -417,8 +623,35 @@
         if (state.chosen.has(state.item.number)) showNext();
       }
 
+      // Server and connection errors only; a missing pick or reason shows
+      // in the reason box.
       function setMessage(text) {
         byId("message").textContent = text;
+      }
+
+      // Show what is missing as the reason box's placeholder, in the error
+      // colour. Without a pick, the pick buttons get the error border too,
+      // since a reason already written hides the placeholder.
+      function showProblem(text) {
+        if (reasonBox.value.trim() === "") {
+          reasonBox.value = "";
+          fitReasonBox();
+        }
+        reasonBox.placeholder = text;
+        reasonBox.classList.add("invalid");
+        reasonBox.setAttribute("aria-invalid", "true");
+        for (const button of document.querySelectorAll("[data-pick]")) {
+          button.classList.toggle("invalid", state.picked === null);
+        }
+      }
+
+      function clearProblem() {
+        reasonBox.placeholder = reasonPlaceholder;
+        reasonBox.classList.remove("invalid");
+        reasonBox.removeAttribute("aria-invalid");
+        for (const button of document.querySelectorAll("[data-pick]")) {
+          button.classList.remove("invalid");
+        }
       }
 
       // The reason box starts one line tall and grows with its text.
@@ -438,7 +671,10 @@
       keepHeights.observe(document.querySelector("header"));
       keepHeights.observe(byId("bar"));
 
-      reasonBox.addEventListener("input", fitReasonBox);
+      reasonBox.addEventListener("input", () => {
+        fitReasonBox();
+        clearProblem();
+      });
       byId("left").addEventListener("click", () => pick("left"));
       byId("right").addEventListener("click", () => pick("right"));
       for (const button of document.querySelectorAll("[data-pick]")) {

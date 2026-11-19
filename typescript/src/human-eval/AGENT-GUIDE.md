@@ -24,6 +24,17 @@ the current best in blind rounds.
 - **Choice**: what the person picked for one item (left, right, or tie) and
   their reason.
 
+## Case text and speaker descriptions
+
+The page reads a case's context line by line: `### ` starts a heading, `- ` a
+list item, `> ` a highlighted quote; lines in a row of one kind join one list or
+quote. Any other line is a paragraph, and blank lines are skipped. There is no
+inline markup such as `**bold**`.
+
+A speaker description is structured: a title, then titled sections of named
+fields. A field's value is one text or a list of texts. A section marked
+`collapsed` starts closed on the page; the grader can open it.
+
 ## Produce
 
 ```sh
@@ -57,7 +68,7 @@ The page asks the project's question for the kind of round, such as "Which reply
 is kinder?" for pair or "Which side sounds more like different people?" for
 lineup.
 
-Items are drawn at random, at most `--items` (default 40). Lineup needs two or
+Items are drawn at random, at most `--items` (default 5). Lineup needs two or
 more speakers on a case; with one it refuses. `--out` must be a new or empty
 folder.
 
@@ -65,22 +76,23 @@ folder.
 the background: it ends only when every item has a choice. Tell the person the
 address and wait. On the page, one item fills the screen with Left and Right;
 the person picks with the arrow keys or T for a tie, or with the mouse, writes a
-reason, and presses Enter. A pick without a reason is refused. Each choice is
-saved in `<round-dir>` as it arrives, so the page can be closed and opened again
-at the same address while `judge` runs.
+reason, and presses Enter. Left and Right need a reason; a tie may have none.
+Each choice is saved in `<round-dir>` as it arrives, so the page can be closed
+and opened again at the same address while `judge` runs.
 
 When the last item gets a choice, `judge` prints the result and saves it as
 `result.json` in `<round-dir>`, next to `decisions.json`:
 
-- Wins for A, wins for B, ties, a sign test p-value (ties left out), and wins
-  per label.
-- **B wins** when it has more wins than A and the p-value is at most 0.05 (a
-  default a project may change). Otherwise there is no winner.
+- Wins for A, wins for B, ties, and wins per label.
+- The winner by majority: **B wins** when it has more wins than A, **A wins**
+  when it has more than B, and otherwise there is no winner. Ties do not count.
 
-Read the reasons in `<round-dir>/decisions.json`. It lists every item with its
-case and sample, the speakers shown, its labels, the winning set (`a`, `b`, or
-`tie`), and the reason as written. (`choices.json` only names the page side
-picked.)
+Read the reasons in `<round-dir>/decisions.json`. Each item has its case id,
+sample, and context, each speaker's text from set A and from set B, its labels,
+the winning set (`a`, `b`, or `tie`), and the reason as written (null for a tie
+left without one). On each item, compare A's text with B's and read the reason
+to see what the person preferred and why; there is no need to open the output
+sets. (`choices.json` only names the page side picked.)
 
 ## Resume
 

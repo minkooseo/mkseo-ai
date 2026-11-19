@@ -6,7 +6,7 @@ import type { RoundRequest } from "../session/commands.ts";
 import { UsageError } from "../usage-error.ts";
 
 const defaultSamples = "1";
-const defaultItems = "40";
+const defaultItems = "5";
 
 export const usage = `Commands:
   generate --out <dir> [--samples <n, default ${defaultSamples}>]

@@ -16,8 +16,7 @@ export function formatResult(result: HumanEvalResult): string {
     `  A: ${result.a}`,
     `  B: ${result.b}`,
     `A won ${result.aWins}, B won ${result.bWins}, ties ${result.ties}.`,
-    `Sign test p-value (ties left out): ${formatPValue(result.pValue)}`,
-    "A p-value of at most 0.05 means the gap is unlikely to be luck.",
+    winnerLine(result.winner),
     "",
     "By label (A wins / B wins / ties):",
     ...(labels.length > 0 ? labels : ["  none"]),
@@ -28,6 +27,13 @@ function sortedEntries<T>(record: Readonly<Record<string, T>>): [string, T][] {
   return Object.entries(record).sort(([x], [y]) => (x < y ? -1 : 1));
 }
 
-function formatPValue(pValue: number): string {
-  return pValue < 0.001 ? "below 0.001" : pValue.toFixed(3);
+function winnerLine(winner: HumanEvalResult["winner"]): string {
+  switch (winner) {
+    case "a":
+      return "A wins: it has more wins than B.";
+    case "b":
+      return "B wins: it has more wins than A.";
+    case null:
+      return "No winner: A and B have as many wins.";
+  }
 }

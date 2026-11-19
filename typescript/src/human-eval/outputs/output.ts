@@ -4,10 +4,28 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { exists, parseJson, writeText } from "../file-io.ts";
-import type { Output, Labels } from "../project.ts";
+import type { Labels, Output, SpeakerDescription } from "../project.ts";
 import { UsageError } from "../usage-error.ts";
 
 export const labelsSchema = z.record(z.string(), z.string());
+
+// The fields are described on the SpeakerDescription type.
+export const speakerDescriptionSchema: z.ZodType<SpeakerDescription> =
+  z.strictObject({
+    title: z.string(),
+    sections: z.array(
+      z.strictObject({
+        title: z.string(),
+        display: z.enum(["open", "collapsed"]),
+        fields: z.array(
+          z.strictObject({
+            name: z.string(),
+            value: z.union([z.string(), z.array(z.string())]),
+          }),
+        ),
+      }),
+    ),
+  });
 
 // The fields are described on the Output type.
 const outputSchema: z.ZodType<Output> = z.strictObject({
@@ -17,7 +35,7 @@ const outputSchema: z.ZodType<Output> = z.strictObject({
   context: z.string(),
   text: z.string(),
   labels: labelsSchema,
-  speakerDescription: z.string().nullable(),
+  speakerDescription: speakerDescriptionSchema.nullable(),
 });
 
 const outputsFile = "outputs.jsonl";

@@ -35,6 +35,14 @@ describe("addChoice", () => {
     expect(isFinished(session)).toBe(false);
   });
 
+  it("saves a tie with a blank reason as having no reason", () => {
+    const session = addChoice(
+      { round: pairRound, choices: [] },
+      { item: 2, picked: "tie", reason: " \n" },
+    );
+    expect(session.choices).toEqual([{ item: 2, picked: "tie", reason: null }]);
+  });
+
   it("finishes the round when the last item gets a choice", () => {
     const session = [1, 2, 3].reduce(
       (current, item) =>
@@ -46,8 +54,13 @@ describe("addChoice", () => {
 
   it.each([
     {
-      what: "a blank reason",
+      what: "a left pick with a blank reason",
       choice: { item: 2, picked: "left", reason: " \n" },
+      message: "Write a reason for the pick.",
+    },
+    {
+      what: "a right pick with no reason",
+      choice: { item: 2, picked: "right", reason: "" },
       message: "Write a reason for the pick.",
     },
     {

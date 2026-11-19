@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
+import type { SpeakerDescription } from "../../project.ts";
 import type { Round } from "../round.ts";
 import { roundView } from "../round-view.ts";
 
 describe("roundView", () => {
   it("shows Left and Right without saying which set is which", () => {
+    const description: SpeakerDescription = {
+      title: "Formal",
+      sections: [
+        {
+          title: "Style",
+          display: "collapsed",
+          fields: [{ name: "Rules", value: ["No slang.", "No emoji."] }],
+        },
+      ],
+    };
     const round: Round = {
       kind: "pair",
       question: "Which reply is kinder?",
@@ -15,7 +26,7 @@ describe("roundView", () => {
           sample: 1,
           context: "My train was 40 minutes late.",
           labels: { task: "reply" },
-          speakerDescription: "Formal. Short sentences, no slang.",
+          speakerDescription: description,
           leftSet: "b",
           left: [{ speaker: "formal", text: "That is unfortunate." }],
           right: [{ speaker: "formal", text: "I am sorry to hear it." }],
@@ -30,7 +41,7 @@ describe("roundView", () => {
         {
           number: 1,
           context: "My train was 40 minutes late.",
-          speakerDescription: "Formal. Short sentences, no slang.",
+          speakerDescription: description,
           left: [{ speaker: "formal", text: "That is unfortunate." }],
           right: [{ speaker: "formal", text: "I am sorry to hear it." }],
         },

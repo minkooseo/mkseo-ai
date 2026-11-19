@@ -55,8 +55,9 @@ export async function saveChoices(
 
 /**
  * Save what a finished round adds up to: result.json with the counts, and
- * decisions.json with each item's case, speakers, labels, winning set, and
- * reason. Returns the result and its file's path.
+ * decisions.json with each item's case, each speaker's text from set A and
+ * set B, labels, winning set, and reason. Returns the result and its
+ * file's path.
  */
 export async function saveFinished(
   dir: string,

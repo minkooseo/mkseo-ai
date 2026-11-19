@@ -1,8 +1,8 @@
-// The result of a finished round: wins per output set and the sign test.
+// The result of a finished round: wins per output set and the majority
+// winner.
 import type { Round } from "../round/round.ts";
 import type { Choice } from "./choices.ts";
 import { decisionsOf, type Decision, type Winner } from "./decisions.ts";
-import { signTest } from "./sign-test.ts";
 
 /** How often the person picked output set A, set B, or a tie. */
 export interface WinCounts {
@@ -21,10 +21,13 @@ export interface HumanEvalResult extends WinCounts {
   readonly a: string;
   /** Folder of output set B, relative to the round; e.g. '../run-2'. */
   readonly b: string;
-  /** How many items got a choice; e.g. 40. */
+  /** How many items got a choice; e.g. 5. */
   readonly choiceCount: number;
-  /** Two-sided sign test p-value with ties left out; e.g. 0.03. */
-  readonly pValue: number;
+  /**
+   * The set with more wins, or null when A and B have as many; ties do not
+   * count; e.g. 'b'.
+   */
+  readonly winner: "a" | "b" | null;
   /** Wins per label name, then per value; e.g. { tone: { calm: ... } }. */
   readonly byLabel: Readonly<
     Record<string, Readonly<Record<string, WinCounts>>>
@@ -65,11 +68,16 @@ function countDecisions(decided: readonly Decision[]) {
   return {
     choiceCount: decided.length,
     ...total,
-    pValue: signTest({ aWins: total.aWins, bWins: total.bWins }),
+    winner: majorityOf(total),
     byLabel: Object.fromEntries(
       [...labels].map(([name, values]) => [name, countEach(values)]),
     ),
   };
+}
+
+function majorityOf({ aWins, bWins }: WinCounts): "a" | "b" | null {
+  if (aWins === bWins) return null;
+  return aWins > bWins ? "a" : "b";
 }
 
 function countEach(

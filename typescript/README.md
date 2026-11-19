@@ -196,8 +196,16 @@ pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after \
 ```
 
 Every `--out` must be a new or empty folder. `judge` opens the grading page and
-waits; pick a side for each item, write a reason, and the result prints when the
-last item has a choice.
+waits; pick a side for each item and write a reason (optional for a tie). When
+the last item has a choice, the result prints: B wins with more wins than A, A
+wins with more than B, and otherwise there is no winner; ties do not count.
+`judge` draws at most `--items` items, 5 by default. `decisions.json` in the
+round folder lists each item's case, each speaker's text from A and B, the
+winning set, and the reason, so it reads on its own.
+
+A case's `context` may use a small line convention on the page: `### ` starts a
+heading, `- ` a list item, `> ` a highlighted quote, and any other line is a
+paragraph. Plain text shows as paragraphs.
 
 With one speaker, `judge --kind lineup` refuses with a one-line message.
 
@@ -222,16 +230,27 @@ export const project: HumanEvalProject = {
     pair: "Which reply is better?",
     lineup: "Which side sounds more like different people?",
   },
-  describeSpeaker: ({ speaker }) => `A ${speaker.name} tone.`,
+  describeSpeaker: ({ speaker }) => ({
+    title: speaker.name,
+    sections: [
+      {
+        title: "Style",
+        display: "open",
+        fields: [{ name: "Tone", value: `A ${speaker.name} tone.` }],
+      },
+    ],
+  }),
 };
 ```
 
 `questions` is what the grading page asks on each kind of round.
-`describeSpeaker` says what a speaker is meant to sound like. `generate` saves
-it with each output, and a pair item shows set B's beside both outputs. Labels
-on cases and speakers, such as `{ tone: "calm" }`, break the result down per
-value. A project with its own case fields writes `HumanEvalProject<MyCase>`, and
-`generate` receives those fields back.
+`describeSpeaker` says what a speaker is meant to sound like: a title, then
+sections of named fields, each value one text or a list. A `collapsed` section
+starts closed on the page. `generate` saves it with each output, and a pair item
+shows set B's beside both outputs. Labels on cases and speakers, such as
+`{ tone: "calm" }`, break the result down per value. A project with its own case
+fields writes `HumanEvalProject<MyCase>`, and `generate` receives those fields
+back.
 
 ## Expo and editable consumption
 

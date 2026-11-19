@@ -1,6 +1,6 @@
 // Draw the items of a pair or lineup round from two output sets.
 import { matchSets } from "../outputs/output.ts";
-import type { Labels, Output } from "../project.ts";
+import type { Labels, Output, SpeakerDescription } from "../project.ts";
 import type { RoundItem, SpeakerOutput } from "./round.ts";
 
 interface ItemRequest {
@@ -72,7 +72,7 @@ interface ItemBeforeSides {
   readonly a: SpeakerOutput[];
   readonly b: SpeakerOutput[];
   readonly labels: Labels;
-  readonly speakerDescription: string | null;
+  readonly speakerDescription: SpeakerDescription | null;
 }
 
 /** Put set A on a random side of each item. */

@@ -1,5 +1,5 @@
 // A session is a round plus the choices made so far.
-import type { Choice } from "../choices/choices.ts";
+import type { Choice, ChoiceRequest } from "../choices/choices.ts";
 import type { Round } from "../round/round.ts";
 import { UsageError } from "../usage-error.ts";
 
@@ -11,23 +11,31 @@ export interface Session {
 }
 
 /**
- * The session with one more choice. Throws a one-line message when the item
- * is not in the round, already has a choice, or the reason is blank.
+ * The session with one more choice. A tie with a blank reason is saved
+ * with no reason; any other reason is saved as written. Throws a one-line
+ * message when the item is not in the round, already has a choice, or a
+ * left or right pick has a blank reason.
  */
-export function addChoice(session: Session, choice: Choice): Session {
+export function addChoice(session: Session, request: ChoiceRequest): Session {
   const { round, choices } = session;
-  if (choice.item > round.items.length) {
+  const { item, picked } = request;
+  if (item > round.items.length) {
     throw new UsageError(
-      `There is no item ${choice.item}; the round has ` +
-        `${round.items.length} items.`,
+      `There is no item ${item}; the round has ${round.items.length} items.`,
     );
   }
-  if (choices.some((saved) => saved.item === choice.item)) {
-    throw new UsageError(`Item ${choice.item} already has a choice.`);
+  if (choices.some((saved) => saved.item === item)) {
+    throw new UsageError(`Item ${item} already has a choice.`);
   }
-  if (choice.reason.trim() === "") {
+  const blank = request.reason.trim() === "";
+  if (blank && picked !== "tie") {
     throw new UsageError("Write a reason for the pick.");
   }
+  const choice: Choice = {
+    item,
+    picked,
+    reason: blank ? null : request.reason,
+  };
   return { round, choices: [...choices, choice] };
 }
 
