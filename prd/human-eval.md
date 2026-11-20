@@ -16,8 +16,9 @@ enough for a single prompt.
   The context is what the person reads to understand the case, so it can be one
   message or a whole conversation.
 - A **speaker** is who writes an output for a case, such as one persona, with a
-  unique name per case and labels. A project returns the speakers that respond
-  to each case; a single-prompt project returns one.
+  unique name per case and labels. For each case a project names the addressed
+  speakers, who always respond, such as the persona the user answered, and the
+  others, who may; a single-prompt project names its one speaker as addressed.
 - The **model call** is a plain function that returns the output text for one
   case and speaker. It may carry the project's own case fields.
 - The **questions** say what the grader answers on a pair round and on a lineup
@@ -32,11 +33,14 @@ to compare between speakers, so only pair rounds apply.
 
 ## Output sets
 
-An **output** is the model's text for one case, one speaker, and one sample
-number. Generating runs every case with every speaker, once per sample number,
-and saves the outputs as one output set. Output labels combine case and speaker
-labels; a label that the two set to different values is an error. Each output
-also keeps its speaker description, or none. A few model calls run at once.
+An **output** is the model's text for one case and one speaker. Generating gives
+each case a chosen number of responses (one unless set): its addressed speakers,
+then others drawn at random to fill the rest, no speaker twice. The draw is the
+same in every run, so two output sets made with the same number hold the same
+speakers. The outputs are saved as one output set. Output labels combine case
+and speaker labels; a label that the two set to different values is an error.
+Each output also keeps its speaker description, or none. A few model calls run
+at once.
 
 The first failed model call stops the run with an error that names the case and
 speaker. Nothing is written, so the same command can simply run again. Every
@@ -44,23 +48,24 @@ command that creates files takes a new or empty folder, so nothing is ever
 overwritten or mixed.
 
 Before the first model call, the project is checked: case ids and speaker names
-must be nonblank and unique, and a case and speaker must not set one label to
-different values.
+must be nonblank and unique, a case and speaker must not set one label to
+different values, and every case must be able to get exactly the chosen number
+of responses.
 
 ## Rounds
 
-A **round** is a fixed sample of items, drawn at random once and saved. Two
-output sets compared in one round must hold the same cases, speakers, samples,
-case text, and labels; their speaker descriptions may differ. A round is a
-random draw of at most a chosen number of items (40 unless set).
+A **round** is a fixed set of items, drawn at random once and saved. Two output
+sets compared in one round must hold the same cases, speakers, case text, and
+labels; their speaker descriptions may differ. A round is a random draw of at
+most a chosen number of items (5 unless set).
 
-- **Pair**: the same case, speaker, and sample from set A and set B, on random
-  sides. When there is a speaker description, the item shows the one saved with
-  set B's output, since B is the newer set being proposed; it is the same
-  whichever side B is on. The person picks the better side or a tie.
-- **Lineup**: for one case and sample, every speaker from set A against the same
-  speakers from set B, on random sides. The person picks the side that sounds
-  more like different people, or a tie. A case with one speaker is left out.
+- **Pair**: the same case and speaker from set A and set B, on random sides.
+  When there is a speaker description, the item shows the one saved with set B's
+  output, since B is the newer set being proposed; it is the same whichever side
+  B is on. The person picks the better side or a tie.
+- **Lineup**: for one case, every speaker from set A against the same speakers
+  from set B, on random sides. The person picks the side that sounds more like
+  different people, or a tie. A case with one speaker is left out.
 
 A round with no items is refused with a one-line reason. The round stores the
 folders of the compared output sets relative to its own folder, so a saved round
@@ -87,10 +92,9 @@ When every item has a choice, the result is counted before anything is saved,
 then saved and printed. Showing a finished round says where its result is, and
 writes the result first if it is missing.
 
-A finished round also saves its decisions: for each item, the case and sample,
-the speakers shown, the item's labels, the winning set (A, B, or a tie), and the
-reason as written. Reasons are read there, since a choice alone names only a
-page side.
+A finished round also saves its decisions: for each item, the case, the speakers
+shown, the item's labels, the winning set (A, B, or a tie), and the reason as
+written. Reasons are read there, since a choice alone names only a page side.
 
 A result gives wins for A, wins for B, ties, the exact two-sided sign test
 p-value with ties left out, and the same counts per label value.

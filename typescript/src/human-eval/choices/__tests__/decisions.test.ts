@@ -26,7 +26,6 @@ describe("decisionsOf", () => {
       {
         item: 1,
         caseId: "late-train",
-        sample: 2,
         context: "### Situation\nMy train was late.",
         outputs: [
           { speaker: "casual", a: "A casual.", b: "B casual." },
@@ -57,7 +56,6 @@ function lineupItem({
 }: Pick<RoundItem, "leftSet" | "left" | "right">): RoundItem {
   return {
     caseId: "late-train",
-    sample: 2,
     context: "### Situation\nMy train was late.",
     labels: { task: "reply" },
     speakerDescription: null,

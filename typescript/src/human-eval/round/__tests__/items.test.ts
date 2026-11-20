@@ -92,7 +92,6 @@ describe("lineupItems", () => {
     expect(items).toEqual([
       {
         caseId: "c1",
-        sample: 1,
         context: "Case c1.",
         labels: {},
         speakerDescription: null,
@@ -154,7 +153,6 @@ function output({
   return {
     caseId,
     speaker,
-    sample: 1,
     context: `Case ${caseId}.`,
     text,
     labels,

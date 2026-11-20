@@ -34,17 +34,18 @@ describe("matchSets", () => {
         ],
       ),
     ).toThrow(
-      "Output sets A and B must hold the same cases, speakers, and samples:\n" +
-        "  different case text or labels: late-train / formal / 1\n" +
-        "  only in A: late-train / casual / 1\n" +
-        "  only in B: late-train / plain / 1",
+      "Output sets A and B must hold the same cases and speakers; sets " +
+        "made with different --num-samples hold different speakers:\n" +
+        "  different case text or labels: late-train / formal\n" +
+        "  only in A: late-train / casual\n" +
+        "  only in B: late-train / plain",
     );
   });
 
   it("rejects a repeated output", () => {
     const one = output({ speaker: "formal", text: "A" });
     expect(() => matchSets([one, one], [one])).toThrow(
-      "Output late-train / formal / 1 appears twice.",
+      "Output late-train / formal appears twice.",
     );
   });
 });
@@ -53,7 +54,6 @@ function output({ speaker, text }: { speaker: string; text: string }): Output {
   return {
     caseId: "late-train",
     speaker,
-    sample: 1,
     context: "The train is late.",
     text,
     labels: { task: "reply" },

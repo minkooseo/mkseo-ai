@@ -9,7 +9,6 @@ const pairRound: Round = {
   b: "/runs/b",
   items: [1, 2, 3].map((item) => ({
     caseId: `c${item}`,
-    sample: 1,
     context: `Case ${item}.`,
     labels: {},
     speakerDescription: null,

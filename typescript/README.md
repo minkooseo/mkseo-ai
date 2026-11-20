@@ -166,7 +166,10 @@ export const project: HumanEvalProject = {
     { id: "train", labels: {}, context: "Train at 9:30." },
     { id: "rent", labels: {}, context: "Rent up 5% in May." },
   ],
-  speakers: () => [{ name: "summary", labels: {} }],
+  speakers: () => ({
+    addressed: [{ name: "summary", labels: {} }],
+    others: [],
+  }),
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
   questions: {
@@ -199,8 +202,8 @@ Every `--out` must be a new or empty folder. `judge` opens the grading page and
 waits; pick a side for each item and write a reason (optional for a tie). When
 the last item has a choice, the result prints: B wins with more wins than A, A
 wins with more than B, and otherwise there is no winner; ties do not count.
-`judge` draws at most `--items` items, 5 by default. `decisions.json` in the
-round folder lists each item's case, each speaker's text from A and B, the
+`judge` draws at most `--num-questions` items, 5 by default. `decisions.json` in
+the round folder lists each item's case, each speaker's text from A and B, the
 winning set, and the reason, so it reads on its own.
 
 A case's `context` may use a small line convention on the page: `### ` starts a
@@ -211,15 +214,21 @@ With one speaker, `judge --kind lineup` refuses with a one-line message.
 
 ### Several speakers
 
-Only the speakers change when one prompt responds in several tones. Each case
-gets every speaker, and a lineup compares all speakers that responded to a case:
+Only the speakers change when one prompt responds in several tones. A case's
+`addressed` speakers respond every time; the rest of its `--num-samples`
+responses come from `others`, drawn at random but the same in every run. A
+lineup compares all speakers that responded to a case, so generate both sets
+with `--num-samples 2` or more:
 
 ```ts
 const tones = ["formal", "casual", "playful"];
 
 export const project: HumanEvalProject = {
   // cases as above
-  speakers: () => tones.map((tone) => ({ name: tone, labels: {} })),
+  speakers: () => ({
+    addressed: [],
+    others: tones.map((tone) => ({ name: tone, labels: {} })),
+  }),
   generate: ({ case: note, speaker }) =>
     client.text({
       instructions: `${instructions} Use a ${speaker.name} tone.`,

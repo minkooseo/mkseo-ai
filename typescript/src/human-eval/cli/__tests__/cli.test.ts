@@ -54,7 +54,6 @@ describe("runHumanEvalCli with a single speaker", () => {
       {
         caseId: "late-train",
         speaker: "assistant",
-        sample: 1,
         context: "My train was 40 minutes late.",
         text: "assistant on late-train!",
         labels: { task: "reply" },
@@ -72,7 +71,6 @@ describe("runHumanEvalCli with a single speaker", () => {
       {
         caseId: "lost-keys",
         speaker: "assistant",
-        sample: 1,
         context: "I lost my keys.",
         text: "assistant on lost-keys.",
         labels: { task: "reply" },
@@ -93,7 +91,7 @@ describe("runHumanEvalCli with a single speaker", () => {
   it("grades a pair round on the page and prints the result", async () => {
     // With 0 every shuffle keeps its order and set A goes on the left.
     vi.spyOn(Math, "random").mockReturnValue(0);
-    const { a, b } = await generateBoth(project);
+    const { a, b } = await generateBoth(project, 1);
     const out = join(work, "round");
     const judge = ["judge", "--kind", "pair", "--a", a, "--b", b];
     const judging = runHumanEvalCli(project, [...judge, "--out", out]);
@@ -146,7 +144,6 @@ describe("runHumanEvalCli with a single speaker", () => {
       {
         item: 1,
         caseId: "late-train",
-        sample: 1,
         context: "My train was 40 minutes late.",
         outputs: [
           {
@@ -162,7 +159,6 @@ describe("runHumanEvalCli with a single speaker", () => {
       {
         item: 2,
         caseId: "lost-keys",
-        sample: 1,
         context: "I lost my keys.",
         outputs: [
           {
@@ -188,7 +184,7 @@ describe("runHumanEvalCli with a single speaker", () => {
 
   it("refuses show while judge serves the round, naming its page", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
-    const { a, b } = await generateBoth(project);
+    const { a, b } = await generateBoth(project, 1);
     const out = join(work, "round");
     const judging = runHumanEvalCli(project, [
       ...["judge", "--kind", "pair", "--a", a, "--b", b, "--out", out],
@@ -257,7 +253,7 @@ describe("runHumanEvalCli with a single speaker", () => {
     ]);
     expect(errors).toEqual([
       "Nothing to compare: lineup needs two or more speakers responding " +
-        "to the same case.",
+        "to the same case; generate both sets with --num-samples 2 or more.",
     ]);
     expect(process.exitCode).toBe(1);
   });
@@ -274,7 +270,7 @@ describe("runHumanEvalCli with several speakers", () => {
     // With 0 every shuffle keeps its order and set A goes on the left.
     vi.spyOn(Math, "random").mockReturnValue(0);
     const project = projectWith({ speakers });
-    const { a, b } = await generateBoth(project);
+    const { a, b } = await generateBoth(project, 3);
     const out = join(work, "round");
     const judging = runHumanEvalCli(project, [
       ...["judge", "--kind", "lineup", "--a", a, "--b", b, "--out", out],
@@ -320,9 +316,13 @@ describe("runHumanEvalCli options", () => {
     {
       argv: [
         ...["judge", "--kind", "pair", "--a", "x", "--b", "y", "--out", "z"],
-        ...["--items", "0"],
+        ...["--num-questions", "0"],
       ],
-      message: "--items must be a whole number of 1 or more.",
+      message: "--num-questions must be a whole number of 1 or more.",
+    },
+    {
+      argv: ["generate", "--out", "z", "--num-samples", "2"],
+      message: "Case late-train has too few speakers for --num-samples 2: 1.",
     },
   ])("refuses $argv in one line", async ({ argv, message }) => {
     await runHumanEvalCli(project, argv);
@@ -369,8 +369,8 @@ describe("runHumanEvalCli generate", () => {
     await expect(
       runHumanEvalCli(failing, ["generate", "--out", out]),
     ).rejects.toThrow(
-      "The model call for case late-train, speaker assistant, sample 1 " +
-        "failed: Model server is not running",
+      "The model call for case late-train, speaker assistant failed: " +
+        "Model server is not running",
     );
     expect(await readdir(work)).toEqual([]);
 
@@ -382,7 +382,10 @@ describe("runHumanEvalCli generate", () => {
     let started = 0;
     const failing: HumanEvalProject = {
       ...projectWith({
-        speakers: [{ name: "assistant", labels: {} }],
+        speakers: Array.from({ length: 10 }, (_, index) => ({
+          name: `speaker-${index}`,
+          labels: {},
+        })),
       }),
       generate: () => {
         started += 1;
@@ -391,7 +394,7 @@ describe("runHumanEvalCli generate", () => {
     };
     await expect(
       runHumanEvalCli(failing, [
-        ...["generate", "--out", join(work, "run"), "--samples", "10"],
+        ...["generate", "--out", join(work, "run"), "--num-samples", "10"],
       ]),
     ).rejects.toThrow("Model server is not running");
     // Four calls run at once; the other sixteen never start.
@@ -414,6 +417,7 @@ describe("runHumanEvalCli generate", () => {
 // B's texts start with "B: ".
 async function generateBoth(
   project: HumanEvalProject,
+  numSamples: number,
 ): Promise<{ a: string; b: string }> {
   const a = join(work, "a");
   const b = join(work, "b");
@@ -421,8 +425,9 @@ async function generateBoth(
     ...project,
     generate: async (input) => `B: ${await project.generate(input)}`,
   };
-  await runHumanEvalCli(project, ["generate", "--out", a]);
-  await runHumanEvalCli(projectB, ["generate", "--out", b]);
+  const samples = ["--num-samples", String(numSamples)];
+  await runHumanEvalCli(project, ["generate", "--out", a, ...samples]);
+  await runHumanEvalCli(projectB, ["generate", "--out", b, ...samples]);
   logged = [];
   return { a, b };
 }
@@ -461,7 +466,7 @@ function projectWith({ speakers }: { speakers: Speaker[] }): HumanEvalProject {
         labels: { task: "reply" },
       },
     ],
-    speakers: () => speakers,
+    speakers: () => ({ addressed: [], others: speakers }),
     generate: ({ case: testCase, speaker }) =>
       Promise.resolve(
         `${speaker.name} on ${testCase.id}` +

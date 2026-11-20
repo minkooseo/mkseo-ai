@@ -31,7 +31,6 @@ const round: Round = {
   items: [
     {
       caseId: "late-train",
-      sample: 1,
       context: "My train was 40 minutes late.",
       labels: { task: "reply" },
       speakerDescription: description,
@@ -41,7 +40,6 @@ const round: Round = {
     },
     {
       caseId: "lost-keys",
-      sample: 1,
       context: "I lost my keys.",
       labels: { task: "reply" },
       speakerDescription: description,

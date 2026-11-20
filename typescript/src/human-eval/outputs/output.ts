@@ -31,7 +31,6 @@ export const speakerDescriptionSchema: z.ZodType<SpeakerDescription> =
 const outputSchema: z.ZodType<Output> = z.strictObject({
   caseId: z.string().min(1),
   speaker: z.string().min(1),
-  sample: z.int().positive(),
   context: z.string(),
   text: z.string(),
   labels: labelsSchema,
@@ -51,8 +50,7 @@ export async function writeOutputs(
 
 /**
  * Read the output set saved in `dir`. Throws when the set is empty, when a
- * line is not a valid output, or when two outputs share a case, speaker, and
- * sample.
+ * line is not a valid output, or when two outputs share a case and speaker.
  */
 export async function readOutputs(dir: string): Promise<Output[]> {
   const path = join(dir, outputsFile);
@@ -80,8 +78,8 @@ export async function readOutputs(dir: string): Promise<Output[]> {
 }
 
 /**
- * Check that output sets A and B hold the same cases, speakers, samples,
- * case text, and labels, and throw a list of the differences otherwise.
+ * Check that output sets A and B hold the same cases, speakers, case text,
+ * and labels, and throw a list of the differences otherwise.
  * Returns a function that finds the B output for an A output.
  */
 export function matchSets(
@@ -107,7 +105,8 @@ export function matchSets(
   }
   if (problems.length > 0) {
     throw new UsageError(
-      "Output sets A and B must hold the same cases, speakers, and samples:\n" +
+      "Output sets A and B must hold the same cases and speakers; sets " +
+        "made with different --num-samples hold different speakers:\n" +
         problems.map((problem) => `  ${problem}`).join("\n"),
     );
   }
@@ -122,9 +121,9 @@ export function matchSets(
   };
 }
 
-/** A short name for an output in messages; e.g. 'late-train / formal / 1'. */
+/** A short name for an output in messages; e.g. 'late-train / formal'. */
 function describeOutput(output: Output): string {
-  return `${output.caseId} / ${output.speaker} / ${output.sample}`;
+  return `${output.caseId} / ${output.speaker}`;
 }
 
 function sameLabels(first: Labels, second: Labels): boolean {
@@ -133,9 +132,9 @@ function sameLabels(first: Labels, second: Labels): boolean {
   return sorted(first) === sorted(second);
 }
 
-/** A text key that is the same for outputs with equal case, speaker, sample. */
+/** A text key that is the same for outputs with equal case and speaker. */
 function outputKey(output: Output): string {
-  return JSON.stringify([output.caseId, output.speaker, output.sample]);
+  return JSON.stringify([output.caseId, output.speaker]);
 }
 
 /** Map each output's key to the output. Throws on a repeated key. */

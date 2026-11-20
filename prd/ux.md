@@ -33,11 +33,12 @@ restart for library source and preset edits.
 
 A project runs its human evaluation command line with one of these commands.
 
-- `generate --out <dir> [--samples <n>]` makes an output set and prints how many
-  outputs it wrote.
-- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--items <n>]`
-  starts a blind round, opens its grading page, and prints the page's address.
-  It ends when every item has a choice and prints the result.
+- `generate --out <dir> [--num-samples <n>]` makes an output set with that many
+  responses per case and prints how many outputs it wrote.
+- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--num-questions <n>]`
+  starts a blind round of at most that many items, opens its grading page, and
+  prints the page's address. It ends when every item has a choice and prints the
+  result.
 - `show --out <dir>` opens the grading page again for an unfinished round, or,
   for a finished round, prints where its result is. While another `judge` or
   `show` serves the round, it refuses and prints that page's address instead.

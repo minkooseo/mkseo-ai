@@ -24,8 +24,6 @@ export interface Decision {
   readonly item: number;
   /** The case shown; e.g. 'late-train'. */
   readonly caseId: string;
-  /** Which try of the case the outputs are; e.g. 2. */
-  readonly sample: number;
   /** The case as the person read it; e.g. 'My train was 40 minutes late.'. */
   readonly context: string;
   /** Each speaker's outputs from both sets, in the order shown. */
@@ -57,7 +55,6 @@ export function decisionsOf({
     return {
       item: index + 1,
       caseId: item.caseId,
-      sample: item.sample,
       context: item.context,
       outputs: outputsOf(item),
       labels: item.labels,

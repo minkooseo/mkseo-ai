@@ -11,24 +11,25 @@ import { UsageError } from "../usage-error.ts";
 export interface OutputTask<C extends HumanEvalCase> {
   readonly testCase: C;
   readonly speaker: Speaker;
-  /** Which try for this case and speaker, counted from 1; e.g. 2. */
-  readonly sample: number;
   /** Case and speaker labels together; e.g. { tone: 'calm', task: 'reply' }. */
   readonly labels: Labels;
 }
 
 /**
- * List the model calls to make, in case, speaker, then sample order. It
- * first checks the project and throws on blank or repeated case ids or
- * speaker names, a label the case and speaker set differently, or nothing
- * to run.
+ * List the model calls to make: for each case, in case order, its `addressed`
+ * speakers and then speakers drawn from its `others` until the case has
+ * `numSamples` responses. The draw is random but the same every time for a
+ * case, so two output sets made with the same `numSamples` hold the same
+ * speakers. It first checks the project and throws on blank or repeated
+ * case ids or speaker names, a label the case and speaker set differently,
+ * or a case that cannot get exactly `numSamples` responses.
  */
 export function planOutputs<C extends HumanEvalCase>({
   project,
-  samples,
+  numSamples,
 }: {
   readonly project: HumanEvalProject<C>;
-  readonly samples: number;
+  readonly numSamples: number;
 }): OutputTask<C>[] {
   assertUniqueNames(
     project.cases.map((testCase) => testCase.id),
@@ -36,24 +37,63 @@ export function planOutputs<C extends HumanEvalCase>({
   );
   if (project.cases.length === 0)
     throw new UsageError("The project has no cases.");
-  const tasks: OutputTask<C>[] = [];
-  for (const testCase of project.cases) {
-    const speakers = project.speakers(testCase);
-    assertUniqueNames(
-      speakers.map((speaker) => speaker.name),
-      `Speaker names for case ${testCase.id}`,
+  return project.cases.flatMap((testCase) =>
+    responders(project, testCase, numSamples).map((speaker) => ({
+      testCase,
+      speaker,
+      labels: mergeLabels(testCase, speaker),
+    })),
+  );
+}
+
+function responders<C extends HumanEvalCase>(
+  project: HumanEvalProject<C>,
+  testCase: C,
+  numSamples: number,
+): readonly Speaker[] {
+  const { addressed, others } = project.speakers(testCase);
+  assertUniqueNames(
+    [...addressed, ...others].map((speaker) => speaker.name),
+    `Speaker names for case ${testCase.id}`,
+  );
+  if (addressed.length > numSamples) {
+    throw new UsageError(
+      `Case ${testCase.id} has ${addressed.length} addressed speakers, more ` +
+        `than --num-samples ${numSamples}.`,
     );
-    for (const speaker of speakers) {
-      const labels = mergeLabels(testCase, speaker);
-      for (let sample = 1; sample <= samples; sample += 1) {
-        tasks.push({ testCase, speaker, sample, labels });
-      }
-    }
   }
-  if (tasks.length === 0) {
-    throw new UsageError("No speaker responds to any case.");
+  if (addressed.length + others.length < numSamples) {
+    throw new UsageError(
+      `Case ${testCase.id} has too few speakers for --num-samples ` +
+        `${numSamples}: ${addressed.length + others.length}.`,
+    );
   }
-  return tasks;
+  return [
+    ...addressed,
+    ...drawOrder(testCase.id, others).slice(0, numSamples - addressed.length),
+  ];
+}
+
+// Sorting by a hash of the case id and speaker name gives each case its own
+// random-looking order that never changes between runs. A larger
+// --num-samples keeps every speaker a smaller one drew.
+function drawOrder(caseId: string, speakers: readonly Speaker[]): Speaker[] {
+  const keyed = speakers.map((speaker) => ({
+    speaker,
+    key: fnv1a(`${caseId}\n${speaker.name}`),
+  }));
+  keyed.sort((x, y) => x.key - y.key);
+  return keyed.map(({ speaker }) => speaker);
+}
+
+// 32-bit FNV-1a over UTF-16 code units.
+function fnv1a(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
 }
 
 function mergeLabels(testCase: HumanEvalCase, speaker: Speaker): Labels {

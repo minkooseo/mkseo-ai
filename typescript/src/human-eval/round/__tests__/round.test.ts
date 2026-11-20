@@ -11,7 +11,6 @@ describe("roundSchema", () => {
       items: [
         {
           caseId: "late-train",
-          sample: 1,
           context: "My train was late.",
           labels: {},
           speakerDescription: null,

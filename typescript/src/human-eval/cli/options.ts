@@ -5,13 +5,13 @@ import type { GenerateOptions } from "../outputs/generate.ts";
 import type { RoundRequest } from "../session/commands.ts";
 import { UsageError } from "../usage-error.ts";
 
-const defaultSamples = "1";
-const defaultItems = "5";
+const defaultNumSamples = "1";
+const defaultNumQuestions = "5";
 
 export const usage = `Commands:
-  generate --out <dir> [--samples <n, default ${defaultSamples}>]
+  generate --out <dir> [--num-samples <n, default ${defaultNumSamples}>]
   judge --kind pair|lineup --a <dir> --b <dir> --out <dir>
-        [--items <n, default ${defaultItems}>]
+        [--num-questions <n, default ${defaultNumQuestions}>]
   show --out <dir>`;
 
 /** Read the `generate` options. */
@@ -20,12 +20,12 @@ export function parseGenerate(args: readonly string[]): GenerateOptions {
     args: [...args],
     options: {
       out: { type: "string" },
-      samples: { type: "string", default: defaultSamples },
+      "num-samples": { type: "string", default: defaultNumSamples },
     },
   });
   return {
     out: resolve(required(values.out, "--out")),
-    samples: positiveInteger(values.samples, "--samples"),
+    numSamples: positiveInteger(values["num-samples"], "--num-samples"),
   };
 }
 
@@ -38,7 +38,7 @@ export function parseJudge(args: readonly string[]): RoundRequest {
       a: { type: "string" },
       b: { type: "string" },
       out: { type: "string" },
-      items: { type: "string", default: defaultItems },
+      "num-questions": { type: "string", default: defaultNumQuestions },
     },
   });
   const kind = required(values.kind, "--kind");
@@ -49,7 +49,7 @@ export function parseJudge(args: readonly string[]): RoundRequest {
     kind,
     a: resolve(required(values.a, "--a")),
     b: resolve(required(values.b, "--b")),
-    itemLimit: positiveInteger(values.items, "--items"),
+    itemLimit: positiveInteger(values["num-questions"], "--num-questions"),
     out: resolve(required(values.out, "--out")),
   };
 }

@@ -23,7 +23,6 @@ describe("roundView", () => {
       items: [
         {
           caseId: "late-train",
-          sample: 1,
           context: "My train was 40 minutes late.",
           labels: { task: "reply" },
           speakerDescription: description,

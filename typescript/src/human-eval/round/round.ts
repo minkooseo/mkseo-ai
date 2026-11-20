@@ -14,8 +14,6 @@ const itemSchema = z
   .strictObject({
     /** The case shown; e.g. 'late-train'. */
     caseId: z.string(),
-    /** The sample number shown on both sides; e.g. 1. */
-    sample: z.int().positive(),
     /** What the person reads to grasp the case; e.g. 'I lost my keys.'. */
     context: z.string(),
     /** Labels all outputs in the item share; e.g. { task: 'reply' }. */

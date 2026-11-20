@@ -32,14 +32,25 @@ export interface Speaker {
   readonly labels: Labels;
 }
 
-/** One model output for one case, one speaker, and one sample number. */
+/**
+ * Who may respond to a case. Every speaker in `addressed` responds; the rest of
+ * the responses come from `others`, drawn in a random order that is the same
+ * every time for the case, so two output sets made with the same number of
+ * responses hold the same speakers.
+ */
+export interface CaseSpeakers {
+  /** Speakers that respond every time; e.g. the persona the user answered. */
+  readonly addressed: readonly Speaker[];
+  /** Speakers drawn for the remaining responses; e.g. every other persona. */
+  readonly others: readonly Speaker[];
+}
+
+/** One model output: one speaker's response to one case. */
 export interface Output {
   /** The case this is for; e.g. 'late-train'. */
   readonly caseId: string;
   /** The speaker that wrote it; e.g. 'formal'. */
   readonly speaker: string;
-  /** Which try for the same case and speaker, counted from 1; e.g. 2. */
-  readonly sample: number;
   /** The case's context, copied; e.g. 'My train was 40 minutes late.'. */
   readonly context: string;
   /** The model's output; e.g. 'Sorry the train was late.'. */
@@ -96,8 +107,11 @@ export interface DescriptionField {
 export interface HumanEvalProject<C extends HumanEvalCase = HumanEvalCase> {
   /** Every case; e.g. 20 user messages to reply to. */
   readonly cases: readonly C[];
-  /** The speakers that respond to a case; a one-speaker project returns one. */
-  readonly speakers: (testCase: C) => readonly Speaker[];
+  /**
+   * Who may respond to a case; a one-speaker project returns that speaker in
+   * `addressed` and no `others`.
+   */
+  readonly speakers: (testCase: C) => CaseSpeakers;
   /** Make one model call and return its output text. */
   readonly generate: (input: {
     readonly case: C;

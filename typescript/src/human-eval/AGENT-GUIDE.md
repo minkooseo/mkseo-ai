@@ -13,13 +13,14 @@ the current best in blind rounds.
 - **Case**: one fixed input the program responds to, such as one user message or
   a whole conversation.
 - **Speaker**: who writes an output for a case, such as one persona or one tone
-  setting. A project may have one speaker or many.
-- **Sample**: one try for a case and speaker; `--samples 2` makes two outputs
-  for each.
-- **Output**: the model's text for one case, one speaker, and one sample.
+  setting. A project may have one speaker or many. For each case it names the
+  addressed speakers, who always respond, and the others, who may.
+- **Sample**: one response to a case; `--num-samples 3` makes three outputs per
+  case, each from a different speaker.
+- **Output**: the model's text for one case and one speaker.
 - **Output set**: every output from one `generate` run, saved in one folder.
-- **Round**: the items shown in one comparison, a sample of the outputs. Items
-  never say which output set an output came from.
+- **Round**: the items shown in one comparison, a random draw of the outputs.
+  Items never say which output set an output came from.
 - **Item**: one thing to decide in a round, numbered from 1.
 - **Choice**: what the person picked for one item (left, right, or tie) and
   their reason.
@@ -38,11 +39,15 @@ fields. A field's value is one text or a list of texts. A section marked
 ## Produce
 
 ```sh
-<cli> generate --out <dir> [--samples <n>]
+<cli> generate --out <dir> [--num-samples <n>]
 ```
 
-It runs every case with every speaker and writes the outputs to `outputs.jsonl`
-in `<dir>`.
+For each case it takes the addressed speakers, then draws others at random until
+the case has `--num-samples` responses (default 1); no speaker responds twice.
+The draw is the same every run, so two output sets made with the same
+`--num-samples` hold the same speakers and can be compared. It writes the
+outputs to `outputs.jsonl` in `<dir>`, and refuses a case that cannot get
+exactly that many responses.
 
 `--out` must be a new or empty folder. If a model call fails, the command stops
 with an error naming the case and speaker and writes nothing; fix the cause and
@@ -54,7 +59,8 @@ Compare the new output set (B) with the current best (A) in a blind round that
 the person decides:
 
 ```sh
-<cli> judge --kind pair --a <dirA> --b <dirB> --out <round-dir> [--items <n>]
+<cli> judge --kind pair --a <dirA> --b <dirB> --out <round-dir> \
+  [--num-questions <n>]
 ```
 
 - **pair**: one output from each set for the same case and speaker. If the
@@ -68,9 +74,9 @@ The page asks the project's question for the kind of round, such as "Which reply
 is kinder?" for pair or "Which side sounds more like different people?" for
 lineup.
 
-Items are drawn at random, at most `--items` (default 5). Lineup needs two or
-more speakers on a case; with one it refuses. `--out` must be a new or empty
-folder.
+Items are drawn at random, at most `--num-questions` (default 5). Lineup needs
+two or more speakers on a case, so generate both sets with `--num-samples 2` or
+more; with one it refuses. `--out` must be a new or empty folder.
 
 `judge` opens the grading page in the browser and prints its address. Run it in
 the background: it ends only when every item has a choice. Tell the person the
@@ -87,12 +93,12 @@ When the last item gets a choice, `judge` prints the result and saves it as
 - The winner by majority: **B wins** when it has more wins than A, **A wins**
   when it has more than B, and otherwise there is no winner. Ties do not count.
 
-Read the reasons in `<round-dir>/decisions.json`. Each item has its case id,
-sample, and context, each speaker's text from set A and from set B, its labels,
-the winning set (`a`, `b`, or `tie`), and the reason as written (null for a tie
-left without one). On each item, compare A's text with B's and read the reason
-to see what the person preferred and why; there is no need to open the output
-sets. (`choices.json` only names the page side picked.)
+Read the reasons in `<round-dir>/decisions.json`. Each item has its case id and
+context, each speaker's text from set A and from set B, its labels, the winning
+set (`a`, `b`, or `tie`), and the reason as written (null for a tie left without
+one). On each item, compare A's text with B's and read the reason to see what
+the person preferred and why; there is no need to open the output sets.
+(`choices.json` only names the page side picked.)
 
 ## Resume
 

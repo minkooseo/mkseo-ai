@@ -11,8 +11,8 @@ interface ItemRequest {
 }
 
 /**
- * Build pair items, drawn at random: each shows one case, speaker, and
- * sample from set A and set B, on random sides. The speaker description
+ * Build pair items, drawn at random: each shows one case and speaker from
+ * set A and set B, on random sides. The speaker description
  * comes from set B's output, since B is the newer set being proposed.
  */
 export function pairItems({ a, b, itemLimit }: ItemRequest): RoundItem[] {
@@ -33,18 +33,17 @@ export function pairItems({ a, b, itemLimit }: ItemRequest): RoundItem[] {
 }
 
 /**
- * Build lineup items, drawn at random: each shows, for one case and
- * sample, every speaker from set A against the same speakers from set B,
+ * Build lineup items, drawn at random: each shows, for one case, every
+ * speaker from set A against the same speakers from set B,
  * on random sides. A case with one speaker has nothing to compare and
  * gives no item.
  */
 export function lineupItems({ a, b, itemLimit }: ItemRequest): RoundItem[] {
   const bOutputFor = matchSets(a, b);
-  // One lineup per case and sample, holding every speaker's output.
+  // One lineup per case, holding every speaker's output.
   const lineups = new Map<string, Output[]>();
   for (const output of a) {
-    const key = JSON.stringify([output.caseId, output.sample]);
-    lineups.set(key, [...(lineups.get(key) ?? []), output]);
+    lineups.set(output.caseId, [...(lineups.get(output.caseId) ?? []), output]);
   }
   const comparable = [...lineups.values()].filter(
     (lineup) => lineup.length >= 2,
@@ -81,7 +80,6 @@ function drawSides(items: readonly ItemBeforeSides[]): RoundItem[] {
     const leftSet = Math.random() < 0.5 ? "a" : "b";
     return {
       caseId: example.caseId,
-      sample: example.sample,
       context: example.context,
       labels,
       speakerDescription,

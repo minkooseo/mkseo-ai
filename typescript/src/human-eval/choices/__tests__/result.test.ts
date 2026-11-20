@@ -102,7 +102,6 @@ function roundItem({
 }): RoundItem {
   return {
     caseId: "c1",
-    sample: 1,
     context: "Case c1.",
     labels: { tone },
     speakerDescription: null,

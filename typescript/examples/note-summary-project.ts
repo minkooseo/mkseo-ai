@@ -15,7 +15,10 @@ export const project: HumanEvalProject = {
     { id: "train", labels: {}, context: "Train at 9:30." },
     { id: "rent", labels: {}, context: "Rent up 5% in May." },
   ],
-  speakers: () => [{ name: "summary", labels: {} }],
+  speakers: () => ({
+    addressed: [{ name: "summary", labels: {} }],
+    others: [],
+  }),
   generate: ({ case: note }) =>
     client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
   questions: {

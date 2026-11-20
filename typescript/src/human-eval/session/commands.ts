@@ -70,7 +70,7 @@ async function drawRound<C extends HumanEvalCase>(
   if (items.length === 0) {
     throw new UsageError(
       "Nothing to compare: lineup needs two or more speakers responding " +
-        "to the same case.",
+        "to the same case; generate both sets with --num-samples 2 or more.",
     );
   }
   // Folders are saved relative to the round, so a saved round reads the
