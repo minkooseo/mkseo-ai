@@ -29,44 +29,37 @@ not hide later examples, allowing developers to inspect mode-specific support.
 Direct and watch modes run source without a compile step; watch mode must
 restart for library source and preset edits.
 
-## Human evaluation commands
+## Grading page
 
-A project runs its human evaluation command line with one of these commands.
-
-- `generate --out <dir> [--num-samples <n>]` makes an output set with that many
-  responses per case and prints how many outputs it wrote.
-- `judge --kind pair|lineup --a <dir> --b <dir> --out <dir> [--num-questions <n>]`
-  starts a blind round of at most that many items, opens its grading page, and
-  prints the page's address. It ends when every item has a choice and prints the
-  result.
-- `show --out <dir>` opens the grading page again for an unfinished round, or,
-  for a finished round, prints where its result is. While another `judge` or
-  `show` serves the round, it refuses and prints that page's address instead.
+A program starts a round. It prints the page's address and a line saying the
+round ends when every item has a choice, and opens the page.
 
 The grading page runs on this machine only and opens on macOS. It shows one item
 at a time. The question and progress stay at the top, and the case follows in
-full. A pair item with a description has three columns, Left | Right |
-description, with the description twice as wide; Left and Right are only as tall
-as their text and stay in view while the page scrolls through the description. A
-lineup has two columns, Left and Right, each listing every speaker in full. On a
-narrow window everything stacks in one column. The page itself scrolls, never
-sideways.
+full. Two columns, Left and Right, each list every speaker's name and output in
+full. A name is pink for a woman and blue for a man, so speakers are told apart
+at a glance. Hovering or focusing a speaker's name shows its description over
+the page, beside the name; it stays while the pointer is on it, so a long one
+can be scrolled. A description's field names never wrap. On a narrow window the
+columns stack. The page itself scrolls, never sideways.
 
-The controls are one bar at the bottom of the window: Left, Tie, Right, a reason
-box that starts one line tall and grows with its text, and Submit; the bar wraps
-on a narrow window. The left and right arrow keys pick a side, the T key picks a
-tie (by its position, so it works with a Korean input source), and Enter
-submits; the mouse does the same through the sides and buttons. The arrows still
-pick while the reason box is empty, and Esc leaves the box. A missing pick or
-reason shows one line under the bar and records nothing. When every item has a
-choice, the page says the result is in the terminal. If the command has stopped,
-the page says to run `show`.
+The controls are one bar at the bottom of the window; the bar wraps on a narrow
+window. In a per-item round it holds Left, Tie, Right, a reason box that starts
+one line tall and grows with its text, and Submit. The left and right arrow keys
+pick a side, the T key picks a tie (by its position, so it works with a Korean
+input source), and Enter submits; the mouse does the same through the sides and
+buttons. The arrows still pick while the reason box is empty, and Esc leaves the
+box. A missing pick or reason shows one line under the bar and records nothing.
 
-Problems the person can fix, such as a folder that is not empty or a round with
-nothing to compare, print one plain line and end with a failing exit code; bugs
-keep their stack trace. A failed model call stops `generate` with an error that
-names the case and speaker, and nothing is written, so the same command can run
-again. [Human evaluation](human-eval.md) owns the rules.
+In a per-speaker round the bar holds a short hint and Submit. Clicking a
+speaker's output marks that side for the speaker and opens a reason box under
+it; clicking it again clears the mark, and clicking the other side moves the
+mark with its reason. Enter submits from anywhere. A mark without a reason is
+outlined and named under the bar, and nothing is recorded. When every item has a
+choice, the page says so and that it can be closed. If the program has stopped,
+the page says the choice was not saved.
+
+[Human evaluation](human-eval.md) owns the rules.
 
 ## Editable development
 
@@ -90,8 +83,7 @@ and remaining runtime limitations.
 ## Interface and design system
 
 The product surfaces are typed developer APIs, configuration choices, the
-terminal demo, and the human evaluation command line with its grading page. It
-supplies no application screens, navigation, dialogs, toasts, or design tokens;
-the grading page uses the system font and follows the system's light or dark
-mode. Consuming applications own those surfaces and their user-facing error
-language.
+terminal demo, and the human evaluation grading page. It supplies no application
+screens, navigation, dialogs, toasts, or design tokens; the grading page uses
+the system font and follows the system's light or dark mode. Consuming
+applications own those surfaces and their user-facing error language.

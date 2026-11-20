@@ -3,8 +3,8 @@
 A source-distributed TypeScript library for text and validated object generation
 through oMLX or LM Studio. The caller supplies Node or Expo fetch and its
 prompt. The main entry has no Python, React, filesystem, or environment variable
-dependency. The Node-only [human evaluation](#human-evaluation) entry helps a
-person tune a prompt by blind comparisons.
+dependency. The Node-only [human evaluation](#human-evaluation) entry serves a
+blind grading page for comparing two sets of model outputs.
 
 ## Unstructured output: a plain string
 
@@ -128,138 +128,44 @@ model-client retries.
 
 ## Human evaluation
 
-`@mkseo/ai/human-eval` helps a person tune a prompt by blind A/B comparisons. A
-person picks between the model's outputs on a grading page that opens in the
-browser; the library never scores an output or picks a side. It needs Node, so
-the main `@mkseo/ai` entry, which Expo apps load, does not include it. Opening
-the page in the browser works on macOS only.
-
-A project describes its cases, speakers, and model call, and passes them to
-`runHumanEvalCli`. That gives it the commands `generate`, `judge`, and `show`.
-`judge` serves the grading page from this machine and ends when every item has a
-choice; `show` reopens an unfinished round. `generate` saves each speaker's
-description with its output, and a pair item shows the one from set B, the newer
-set. [AGENT-GUIDE.md](src/human-eval/AGENT-GUIDE.md) explains a whole evaluation
-for the agent that runs it. Each field is described in
-[project.ts](src/human-eval/project.ts).
-
-### Tune your own prompt
-
-One prompt, one speaker, and two cases
-([note-summary-project.ts](examples/note-summary-project.ts)):
+`@mkseo/ai/human-eval` gives a program a blind grading page. The program makes
+two output sets, A and B, picks the items to compare, and passes them to
+`gradeRound`; a person decides each item on a page that opens in the browser,
+and `gradeRound` resolves with the verdicts. The library never scores an output
+or picks a side. It needs Node, so the main `@mkseo/ai` entry, which Expo apps
+load, does not include it. Opening the page works on macOS only.
 
 ```ts
-import { createModelClient, loadPreset } from "@mkseo/ai";
-import type { HumanEvalProject } from "@mkseo/ai/human-eval";
+import { gradeRound } from "@mkseo/ai/human-eval";
 
-const client = createModelClient({
-  model: loadPreset("omlx"),
-  fetch: globalThis.fetch,
-});
-
-// The prompt being tuned. Edit it, run generate again, then compare.
-const instructions = "Summarize the note in one short sentence.";
-
-/** One prompt, one speaker: the smallest human evaluation project. */
-export const project: HumanEvalProject = {
-  cases: [
-    { id: "train", labels: {}, context: "Train at 9:30." },
-    { id: "rent", labels: {}, context: "Rent up 5% in May." },
+const verdicts = await gradeRound({
+  question: "Which summary is clearer?",
+  ask: "item",
+  items: [
+    {
+      context: "Train at 9:30.",
+      speakers: [
+        {
+          speaker: "summary",
+          gender: "woman",
+          description: { title: "Summary", sections: [] },
+          a: "Train leaves 9:30.",
+          b: "Catch the 9:30 train.",
+        },
+      ],
+    },
   ],
-  speakers: () => ({
-    addressed: [{ name: "summary", labels: {} }],
-    others: [],
-  }),
-  generate: ({ case: note }) =>
-    client.text({ instructions, prompt: note.context, maxOutputTokens: 128 }),
-  questions: {
-    pair: "Which summary is better?",
-    lineup: "Which side sounds more like different summaries?",
-  },
-  describeSpeaker: null,
-};
+});
+// [{ winner: "b", reason: "Says what to do." }]
 ```
 
-The entry ([tune-note-summary.ts](examples/tune-note-summary.ts)) passes the
-command line through:
-
-```ts
-import { runHumanEvalCli } from "@mkseo/ai/human-eval";
-import { project } from "./note-summary-project.ts";
-
-await runHumanEvalCli(project, process.argv.slice(2));
-```
-
-```sh
-pnpm tune-example generate --out /tmp/notes/before
-# edit the instructions
-pnpm tune-example generate --out /tmp/notes/after
-pnpm tune-example judge --kind pair --a /tmp/notes/before --b /tmp/notes/after \
-  --out /tmp/notes/round-1
-```
-
-Every `--out` must be a new or empty folder. `judge` opens the grading page and
-waits; pick a side for each item and write a reason (optional for a tie). When
-the last item has a choice, the result prints: B wins with more wins than A, A
-wins with more than B, and otherwise there is no winner; ties do not count.
-`judge` draws at most `--num-questions` items, 5 by default. `decisions.json` in
-the round folder lists each item's case, each speaker's text from A and B, the
-winning set, and the reason, so it reads on its own.
-
-A case's `context` may use a small line convention on the page: `### ` starts a
-heading, `- ` a list item, `> ` a highlighted quote, and any other line is a
-paragraph. Plain text shows as paragraphs.
-
-With one speaker, `judge --kind lineup` refuses with a one-line message.
-
-### Several speakers
-
-Only the speakers change when one prompt responds in several tones. A case's
-`addressed` speakers respond every time; the rest of its `--num-samples`
-responses come from `others`, drawn at random but the same in every run. A
-lineup compares all speakers that responded to a case, so generate both sets
-with `--num-samples 2` or more:
-
-```ts
-const tones = ["formal", "casual", "playful"];
-
-export const project: HumanEvalProject = {
-  // cases as above
-  speakers: () => ({
-    addressed: [],
-    others: tones.map((tone) => ({ name: tone, labels: {} })),
-  }),
-  generate: ({ case: note, speaker }) =>
-    client.text({
-      instructions: `${instructions} Use a ${speaker.name} tone.`,
-      prompt: note.context,
-      maxOutputTokens: 128,
-    }),
-  questions: {
-    pair: "Which reply is better?",
-    lineup: "Which side sounds more like different people?",
-  },
-  describeSpeaker: ({ speaker }) => ({
-    title: speaker.name,
-    sections: [
-      {
-        title: "Style",
-        display: "open",
-        fields: [{ name: "Tone", value: `A ${speaker.name} tone.` }],
-      },
-    ],
-  }),
-};
-```
-
-`questions` is what the grading page asks on each kind of round.
-`describeSpeaker` says what a speaker is meant to sound like: a title, then
-sections of named fields, each value one text or a list. A `collapsed` section
-starts closed on the page. `generate` saves it with each output, and a pair item
-shows set B's beside both outputs. Labels on cases and speakers, such as
-`{ tone: "calm" }`, break the result down per value. A project with its own case
-fields writes `HumanEvalProject<MyCase>`, and `generate` receives those fields
-back.
+With `ask: "item"` the person picks a side or a tie per item; with
+`ask: "speaker"` they may mark, per speaker, the better side, and every speaker
+gets a verdict, a tie when unmarked. Each item puts set A on a random side, and
+the page never learns which. A pick or mark of a side needs a reason. Choices
+live in memory, so the page can be reopened while the round runs, but a stopped
+process loses the round. Each field is described in
+[round.ts](src/human-eval/round.ts).
 
 ## Expo and editable consumption
 

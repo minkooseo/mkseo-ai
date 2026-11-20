@@ -22,8 +22,7 @@
     "src/**/*.ts",
     "!src/**/__tests__/**",
     "src/client/local-models.json",
-    "src/human-eval/AGENT-GUIDE.md",
-    "src/human-eval/session/grading-page.html"
+    "src/human-eval/grading-page.html"
   ],
   "scripts": {
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -32,8 +31,7 @@
     "test": "vitest run",
     "build": "pnpm pack --out dist/mkseo-ai.tgz",
     "demo:watch": "tsx watch --include \"src/**/*.ts\" --include \"src/**/*.json\" demo.ts",
-    "demo-typescript": "tsx demo.ts",
-    "tune-example": "tsx examples/tune-note-summary.ts"
+    "demo-typescript": "tsx demo.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"

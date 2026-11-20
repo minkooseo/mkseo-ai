@@ -1,14 +1,16 @@
-// Entry of @mkseo/ai/human-eval: the command line runner and the types a
-// project fills in.
-export { runHumanEvalCli } from "./cli/cli.ts";
+// Entry of @mkseo/ai/human-eval: a web page where a person compares the
+// outputs of two versions of a prompt, without knowing which is which, and
+// picks the better one. The caller makes the outputs and chooses what to
+// show; this package only runs the page and reports the picks.
+export { gradeRound } from "./grading.ts";
 export type {
-  CaseSpeakers,
+  Description,
   DescriptionField,
   DescriptionSection,
-  Output,
-  HumanEvalCase,
-  HumanEvalProject,
-  Labels,
-  Speaker,
-  SpeakerDescription,
-} from "./project.ts";
+  ItemVerdict,
+  Round,
+  RoundItem,
+  SpeakerOutputs,
+  SpeakerVerdict,
+  Winner,
+} from "./round.ts";

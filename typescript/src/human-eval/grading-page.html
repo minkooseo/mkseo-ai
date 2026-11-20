@@ -18,8 +18,10 @@
            selected side. */
         --mark: #c98a00;
         --mark-soft: #fdf3d7;
-        /* Heights of the sticky header and control bar, set by the script. */
-        --header: 48px;
+        /* Speaker names by gender, to tell speakers apart at a glance. */
+        --woman: #d6336c;
+        --man: #1c6fd1;
+        /* Height of the control bar, set by the script. */
         --bar: 64px;
         color-scheme: light;
       }
@@ -35,6 +37,8 @@
           --error: #f2a39c;
           --mark: #e0b040;
           --mark-soft: #3a3220;
+          --woman: #f783ac;
+          --man: #74b3f5;
           color-scheme: dark;
         }
       }
@@ -125,13 +129,20 @@
         border-radius: 4px;
         color: var(--text);
       }
-      /* The speaker description is long reference text, so it is set
-         smaller and tighter than the outputs being graded. */
-      #description {
+      /* A speaker's description shows over the page while its name is
+         hovered or focused. It is long reference text, so it is set smaller
+         and tighter than the outputs being graded. */
+      #profile {
+        position: fixed;
+        z-index: 3;
+        width: min(600px, calc(100vw - 16px));
+        max-height: 70vh;
+        overflow-y: auto;
         line-height: 1.45;
         overflow-wrap: anywhere;
+        box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
       }
-      #description-title {
+      #profile-title {
         font-size: 0.95rem;
         margin: 0 0 6px;
       }
@@ -140,24 +151,15 @@
         padding-top: 8px;
         border-top: 1px solid var(--line);
       }
-      summary.section-title {
-        cursor: pointer;
-        font-weight: 700;
-        margin: 0;
-      }
-      details[open] > summary.section-title {
-        margin-bottom: 4px;
-      }
       .fields {
         display: grid;
-        /* One fixed name column, so values line up across sections. */
-        grid-template-columns: 6.5em minmax(0, 1fr);
+        /* The name column fits its longest name, so names never wrap. */
+        grid-template-columns: max-content minmax(0, 1fr);
         gap: 4px 10px;
         margin: 0;
       }
       .fields dt {
-        /* Korean names wrap at spaces, not mid-word. */
-        word-break: keep-all;
+        white-space: nowrap;
         color: var(--muted);
         font-size: 0.78rem;
         padding-top: 0.08rem;
@@ -174,64 +176,72 @@
         padding-left: 1.2em;
         white-space: normal;
       }
-      #sides {
-        display: grid;
-        gap: 12px;
-        align-items: start;
-      }
       #outputs {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
       }
-      /* A pair item: three columns, Left | Right | description. Left and
-         Right are only as tall as their text and stay in view while the
-         long description scrolls with the page. */
-      #sides.with-description {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
-      }
-      #sides.with-description #outputs {
-        display: contents;
-      }
-      #sides.with-description .side {
-        position: sticky;
-        top: calc(var(--header) + 4px);
-      }
       @media (max-width: 800px) {
-        #outputs,
-        #sides.with-description {
+        #outputs {
           grid-template-columns: minmax(0, 1fr);
-        }
-        #sides.with-description .side {
-          position: static;
         }
         .fields {
           grid-template-columns: minmax(0, 1fr);
           gap: 0;
-        }
-        .fields dt {
-          max-width: none;
         }
         .fields dd + dt {
           margin-top: 4px;
         }
       }
       .side {
-        cursor: pointer;
         border-width: 2px;
+      }
+      /* In an 'item' round a whole side is picked; in a 'speaker' round
+         each speaker's text is marked on its own. */
+      .ask-item .side,
+      .ask-speaker .speaker {
+        cursor: pointer;
       }
       .side[aria-pressed="true"] {
         border-color: var(--picked);
         background: var(--picked-soft);
       }
+      .speaker {
+        border: 2px solid transparent;
+        border-radius: 6px;
+        padding: 4px 6px;
+        margin: 0 -6px;
+      }
       .speaker + .speaker {
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid var(--line);
+        margin-top: 6px;
+      }
+      .speaker[aria-pressed="true"] {
+        border-color: var(--picked);
+        background: var(--picked-soft);
+      }
+      .speaker-name.woman {
+        color: var(--woman);
+      }
+      .speaker-name.man {
+        color: var(--man);
       }
       .speaker-name {
         font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: underline dotted var(--muted);
+        text-underline-offset: 3px;
+        cursor: help;
+      }
+      .mark-reason {
+        display: block;
+        width: 100%;
+        margin-top: 6px;
+      }
+      #hint {
+        flex: 1 1 240px;
+        align-self: center;
+        color: var(--muted);
         font-size: 0.9rem;
       }
       #bar {
@@ -320,37 +330,22 @@
           <h2>Case</h2>
           <div id="context-text" class="ctx"></div>
         </div>
-        <div id="sides">
-          <div id="outputs">
-            <div
-              id="left"
-              class="panel side"
-              role="button"
-              aria-pressed="false"
-            >
-              <h2>Left</h2>
-              <div class="speakers"></div>
-            </div>
-            <div
-              id="right"
-              class="panel side"
-              role="button"
-              aria-pressed="false"
-            >
-              <h2>Right</h2>
-              <div class="speakers"></div>
-            </div>
+        <div id="outputs">
+          <div id="left" class="panel side" aria-pressed="false">
+            <h2>Left</h2>
+            <div class="speakers"></div>
           </div>
-          <div id="description" class="panel" hidden>
-            <h3 id="description-title"></h3>
-            <div id="description-sections"></div>
+          <div id="right" class="panel side" aria-pressed="false">
+            <h2>Right</h2>
+            <div class="speakers"></div>
           </div>
         </div>
       </section>
-      <p id="done" hidden>
-        Every item has a choice. The result is in the terminal; you can close
-        this page.
-      </p>
+      <div id="profile" class="panel" hidden>
+        <h3 id="profile-title"></h3>
+        <div id="profile-sections"></div>
+      </div>
+      <p id="done" hidden>Every item has a choice; you can close this page.</p>
     </main>
     <div id="bar">
       <div id="bar-inner">
@@ -369,6 +364,10 @@
             title="← → pick a side, T a tie, Enter submits, Esc leaves the box"
             aria-label="Reason (optional for a tie)"
           ></textarea>
+          <span id="hint" hidden>
+            Click a speaker's better text to mark it and say why; unmarked
+            speakers count as ties. Enter submits.
+          </span>
           <button type="button" id="submit" title="Enter">Submit</button>
         </div>
         <p id="message" role="alert"></p>
@@ -378,36 +377,51 @@
       "use strict";
 
       // The page only ever learns Left and Right; the server keeps which
-      // output set is on which side.
+      // output set is on which side. In an 'item' round the grader picks a
+      // side or a tie per item; in a 'speaker' round they may mark, per
+      // speaker, the side whose text is better.
       const state = {
         view: null,
         chosen: new Set(),
         item: null,
+        // An 'item' round's pick: 'left', 'right', 'tie', or null.
         picked: null,
+        // A 'speaker' round's marks: speaker name -> { picked, reason }.
+        marks: new Map(),
         sending: false,
       };
       const byId = (id) => document.getElementById(id);
       const reasonBox = byId("reason");
       const reasonPlaceholder = reasonBox.placeholder;
-      // Whether each description section is open, by section title. It
-      // lasts while the page is open, so a section stays as the grader
-      // left it from one item to the next.
-      const sectionOpen = new Map();
+      const profile = byId("profile");
+      let hideProfileTimer = null;
 
       async function load() {
         const response = await fetch("/round");
         const body = await response.json();
         if (!response.ok) throw new Error(body.error);
-        state.view = body.view;
+        state.view = body;
         state.chosen = new Set(body.chosen);
-        byId("question").textContent = body.view.question;
+        byId("question").textContent = body.question;
+        const byItem = body.ask === "item";
+        document.body.classList.add(byItem ? "ask-item" : "ask-speaker");
+        for (const button of document.querySelectorAll("[data-pick]")) {
+          button.hidden = !byItem;
+        }
+        reasonBox.hidden = !byItem;
+        byId("hint").hidden = byItem;
         showNext();
+      }
+
+      function askByItem() {
+        return state.view.ask === "item";
       }
 
       function showNext() {
         const next = state.view.items.find(
           (item) => !state.chosen.has(item.number),
         );
+        hideProfile();
         if (next === undefined) {
           byId("item").hidden = true;
           byId("bar").hidden = true;
@@ -417,6 +431,7 @@
         }
         state.item = next;
         state.picked = null;
+        state.marks = new Map();
         reasonBox.value = "";
         fitReasonBox();
         clearProblem();
@@ -429,33 +444,49 @@
         byId("progress").textContent =
           `Item ${item.number} of ${total} · ${state.chosen.size} done`;
         byId("context-text").replaceChildren(...contextNodes(item.context));
-        fillSide(byId("left"), item.left);
-        fillSide(byId("right"), item.right);
-        const description = item.speakerDescription;
-        byId("description").hidden = description === null;
-        byId("sides").classList.toggle(
-          "with-description",
-          description !== null,
-        );
-        if (description !== null) fillDescription(description);
+        fillSide(byId("left"), item.speakers, "left");
+        fillSide(byId("right"), item.speakers, "right");
         byId("item").hidden = false;
         showPick();
+        showMarks(null);
         window.scrollTo(0, 0);
       }
 
       // Model text goes in as plain text, never as HTML.
-      function fillSide(side, speakers) {
+      function fillSide(side, speakers, sideName) {
         side.querySelector(".speakers").replaceChildren(
           ...speakers.map((speaker) => {
             const block = document.createElement("div");
             block.className = "speaker";
-            const name = document.createElement("div");
-            name.className = "speaker-name";
-            name.textContent = speaker.speaker;
-            const text = document.createElement("div");
+            block.dataset.speaker = speaker.speaker;
+            block.dataset.side = sideName;
+            const name = element("span", speaker.speaker);
+            name.className = `speaker-name ${speaker.gender}`;
+            name.tabIndex = 0;
+            name.addEventListener("mouseenter", () =>
+              showProfile(speaker.description, name),
+            );
+            name.addEventListener("focus", () =>
+              showProfile(speaker.description, name),
+            );
+            name.addEventListener("mouseleave", hideProfileSoon);
+            name.addEventListener("blur", hideProfileSoon);
+            const text = element("div", speaker[sideName]);
             text.className = "text";
-            text.textContent = speaker.text;
-            block.append(name, text);
+            const slot = document.createElement("div");
+            slot.className = "mark-slot";
+            block.append(name, text, slot);
+            if (!askByItem()) {
+              block.setAttribute("role", "button");
+              block.addEventListener("click", (event) => {
+                // The name is for the profile, and the reason box for
+                // typing; neither marks.
+                if (event.target.closest("textarea, .speaker-name") !== null) {
+                  return;
+                }
+                toggleMark(speaker.speaker, sideName);
+              });
+            }
             return block;
           }),
         );
@@ -500,36 +531,49 @@
         return nodes;
       }
 
-      function fillDescription(description) {
-        byId("description-title").textContent = description.title;
-        byId("description-sections").replaceChildren(
+      // The description shows next to the name, inside the window, and
+      // stays while the pointer is on it so a long one can be scrolled.
+      function showProfile(description, anchor) {
+        clearTimeout(hideProfileTimer);
+        byId("profile-title").textContent = description.title;
+        byId("profile-sections").replaceChildren(
           ...description.sections.map(sectionNode),
         );
+        profile.hidden = false;
+        const rect = anchor.getBoundingClientRect();
+        const width = profile.offsetWidth;
+        const height = profile.offsetHeight;
+        const bottomLimit = window.innerHeight - byId("bar").offsetHeight - 8;
+        const below = rect.bottom + 4;
+        const top =
+          below + height <= bottomLimit
+            ? below
+            : Math.max(8, rect.top - 4 - height);
+        const left = Math.min(
+          Math.max(8, rect.left),
+          window.innerWidth - width - 8,
+        );
+        profile.style.top = `${top}px`;
+        profile.style.left = `${left}px`;
       }
 
-      // An open section shows its title and fields; a collapsed one is a
-      // details element that starts closed and keeps the grader's
-      // open or closed choice by title.
+      function hideProfileSoon() {
+        clearTimeout(hideProfileTimer);
+        hideProfileTimer = setTimeout(hideProfile, 200);
+      }
+
+      function hideProfile() {
+        clearTimeout(hideProfileTimer);
+        profile.hidden = true;
+      }
+
       function sectionNode(section) {
-        const fields = fieldList(section.fields);
-        if (section.display === "open") {
-          const block = document.createElement("div");
-          block.className = "description-section";
-          const title = element("h4", section.title);
-          title.className = "section-title";
-          block.append(title, fields);
-          return block;
-        }
-        const details = document.createElement("details");
-        details.className = "description-section";
-        details.open = sectionOpen.get(section.title) ?? false;
-        const summary = element("summary", section.title);
-        summary.className = "section-title";
-        details.append(summary, fields);
-        details.addEventListener("toggle", () =>
-          sectionOpen.set(section.title, details.open),
-        );
-        return details;
+        const block = document.createElement("div");
+        block.className = "description-section";
+        const title = element("h4", section.title);
+        title.className = "section-title";
+        block.append(title, fieldList(section.fields));
+        return block;
       }
 
       function fieldList(fields) {
@@ -564,8 +608,15 @@
       }
 
       function showPick() {
-        byId("left").setAttribute("aria-pressed", state.picked === "left");
-        byId("right").setAttribute("aria-pressed", state.picked === "right");
+        const byItem = askByItem();
+        byId("left").setAttribute(
+          "aria-pressed",
+          byItem && state.picked === "left",
+        );
+        byId("right").setAttribute(
+          "aria-pressed",
+          byItem && state.picked === "right",
+        );
         for (const button of document.querySelectorAll("[data-pick]")) {
           button.setAttribute(
             "aria-pressed",
@@ -574,44 +625,119 @@
         }
       }
 
+      // Marking a side again clears the mark; marking the other side moves
+      // it there with its reason.
+      function toggleMark(speaker, side) {
+        const mark = state.marks.get(speaker);
+        if (mark?.picked === side) {
+          state.marks.delete(speaker);
+          showMarks(null);
+        } else {
+          state.marks.set(speaker, {
+            picked: side,
+            reason: mark?.reason ?? "",
+          });
+          showMarks(speaker);
+        }
+        setMessage("");
+      }
+
+      // Each marked text gets the pressed look and a reason box under it;
+      // the box of `focusSpeaker`, if any, takes the focus.
+      function showMarks(focusSpeaker) {
+        for (const block of document.querySelectorAll(".speaker")) {
+          const { speaker, side } = block.dataset;
+          const mark = state.marks.get(speaker);
+          const marked = mark?.picked === side;
+          block.setAttribute("aria-pressed", marked);
+          const slot = block.querySelector(".mark-slot");
+          if (!marked) {
+            slot.replaceChildren();
+            continue;
+          }
+          let box = slot.querySelector("textarea");
+          if (box === null) {
+            box = document.createElement("textarea");
+            box.className = "mark-reason";
+            box.rows = 1;
+            box.placeholder = `Why is this ${speaker} better?`;
+            box.setAttribute("aria-label", box.placeholder);
+            box.value = mark.reason;
+            box.addEventListener("input", () => {
+              mark.reason = box.value;
+              box.classList.remove("invalid");
+              setMessage("");
+            });
+            slot.append(box);
+          }
+          if (speaker === focusSpeaker) box.focus();
+        }
+      }
+
       async function submit() {
         if (state.sending || state.item === null) return;
-        if (state.picked === null) {
-          showProblem("Pick a side or a tie first.");
-          return;
-        }
-        if (state.picked !== "tie" && reasonBox.value.trim() === "") {
-          showProblem("Write a reason for the pick.");
-          reasonBox.focus();
-          return;
-        }
+        const body = askByItem() ? itemChoice() : speakerChoice();
+        if (body === null) return;
         state.sending = true;
         try {
           const response = await fetch("/choices", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              item: state.item.number,
-              picked: state.picked,
-              reason: reasonBox.value,
-            }),
+            body: JSON.stringify(body),
           });
-          const body = await response.json();
+          const reply = await response.json();
           if (!response.ok) {
-            setMessage(body.error);
+            setMessage(reply.error);
             await refreshChosen();
             return;
           }
           state.chosen.add(state.item.number);
-          reasonBox.blur();
+          document.activeElement?.blur();
           showNext();
         } catch {
           setMessage(
-            "The grading command is not running. Run show to open the page again.",
+            "The grading command has stopped, so this choice was not saved.",
           );
         } finally {
           state.sending = false;
         }
+      }
+
+      // The item's pick, or null after showing what is missing.
+      function itemChoice() {
+        if (state.picked === null) {
+          showProblem("Pick a side or a tie first.");
+          return null;
+        }
+        if (state.picked !== "tie" && reasonBox.value.trim() === "") {
+          showProblem("Write a reason for the pick.");
+          reasonBox.focus();
+          return null;
+        }
+        return {
+          item: state.item.number,
+          picked: state.picked,
+          reason: reasonBox.value,
+        };
+      }
+
+      // The item's marks, or null after pointing at a mark with no reason.
+      function speakerChoice() {
+        for (const box of document.querySelectorAll(".mark-reason")) {
+          if (box.value.trim() !== "") continue;
+          box.classList.add("invalid");
+          box.focus();
+          setMessage("Write a reason for each marked text.");
+          return null;
+        }
+        return {
+          item: state.item.number,
+          marks: [...state.marks].map(([speaker, mark]) => ({
+            speaker,
+            picked: mark.picked,
+            reason: mark.reason,
+          })),
+        };
       }
 
       // Another page on the same round may have chosen this item.
@@ -623,8 +749,8 @@
         if (state.chosen.has(state.item.number)) showNext();
       }
 
-      // Server and connection errors only; a missing pick or reason shows
-      // in the reason box.
+      // Server and connection errors, and marks without a reason; a missing
+      // pick or reason of an 'item' round shows in the reason box.
       function setMessage(text) {
         byId("message").textContent = text;
       }
@@ -661,43 +787,50 @@
         reasonBox.style.height = `${reasonBox.scrollHeight + 2}px`;
       }
 
-      // Sticky parts need the real heights of the header and the bar.
-      const keepHeights = new ResizeObserver(() => {
-        const root = document.documentElement.style;
-        const header = document.querySelector("header");
-        root.setProperty("--header", `${header.offsetHeight}px`);
-        root.setProperty("--bar", `${byId("bar").offsetHeight}px`);
+      // The main area's bottom padding keeps its last line clear of the
+      // fixed bar, whose height changes as it wraps.
+      const keepBarHeight = new ResizeObserver(() => {
+        document.documentElement.style.setProperty(
+          "--bar",
+          `${byId("bar").offsetHeight}px`,
+        );
       });
-      keepHeights.observe(document.querySelector("header"));
-      keepHeights.observe(byId("bar"));
+      keepBarHeight.observe(byId("bar"));
 
       reasonBox.addEventListener("input", () => {
         fitReasonBox();
         clearProblem();
       });
-      byId("left").addEventListener("click", () => pick("left"));
-      byId("right").addEventListener("click", () => pick("right"));
+      for (const side of ["left", "right"]) {
+        byId(side).addEventListener("click", () => {
+          if (askByItem()) pick(side);
+        });
+      }
       for (const button of document.querySelectorAll("[data-pick]")) {
         button.addEventListener("click", () => pick(button.dataset.pick));
       }
       byId("submit").addEventListener("click", submit);
+      profile.addEventListener("mouseenter", () =>
+        clearTimeout(hideProfileTimer),
+      );
+      profile.addEventListener("mouseleave", hideProfileSoon);
 
       document.addEventListener("keydown", (event) => {
         // Keys that finish a Korean or Japanese syllable are not commands.
         if (event.isComposing || event.keyCode === 229) return;
         if (byId("item").hidden) return;
-        const inBox = event.target === reasonBox;
+        const inBox = event.target instanceof HTMLTextAreaElement;
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
-          submit();
+          // A held key would submit the next item before it is read.
+          if (!event.repeat) submit();
           return;
         }
-        if (inBox) {
-          if (event.key === "Escape") reasonBox.blur();
-          // Arrows still pick while the box is empty; otherwise they move
-          // the cursor.
-          if (reasonBox.value !== "") return;
-        }
+        if (inBox && event.key === "Escape") event.target.blur();
+        if (!askByItem()) return;
+        // Arrows still pick while the reason box is empty; otherwise they
+        // move the cursor.
+        if (inBox && reasonBox.value !== "") return;
         if (event.key === "ArrowLeft") {
           event.preventDefault();
           pick("left");

@@ -14,9 +14,9 @@ TypeScript caller -> client factory -> generation -> compatible transport
                                            |                 |
                                  schema contract + retry  oMLX / LM Studio
 
-TypeScript project -> human-eval CLI -> session -> choices -> round -> outputs
-                                           |
-                                      local-server
+TypeScript caller -> human-eval grading -> blind round
+                              |
+                         local-server
 ```
 
 ## Python package
@@ -112,42 +112,21 @@ imports it directly.
 
 ### Human evaluation
 
-`typescript/src/human-eval/` is the Node-only human evaluation runtime, exported
-as `@mkseo/ai/human-eval` and never imported by the main entry. Folders import
-one way: `cli/` → `session/` → `choices/` → `round/` → `outputs/`. The top-level
-files may be imported by any folder, and only `human-eval.ts` imports `cli/`.
+`typescript/src/human-eval/` is the Node-only blind grading page, exported as
+`@mkseo/ai/human-eval` and never imported by the main entry.
 
-- Top level: `human-eval.ts` is the entry, with `runHumanEvalCli` and the public
-  types. `project.ts` defines what a project supplies: cases, speakers, the
-  model call, the speaker description, and the output and label types.
-  `file-io.ts` reads and checks JSON, writes files whole through a temporary
-  file, and refuses an `--out` folder that is not empty; `usage-error.ts` marks
-  problems the person can fix. `AGENT-GUIDE.md` ships with the package and tells
-  an agent how to run an evaluation.
-- `outputs/` produces an output set. `plan.ts` checks the project and lists the
-  model calls; `generate.ts` makes them through the shared `ConcurrencyGate` and
-  saves the outputs with their speaker descriptions; `output.ts` owns
-  `outputs.jsonl` and matches two output sets.
-- `round/` is what the person is shown. `round.ts` owns the saved round schema;
-  `items.ts` draws pair and lineup items at random, a pair item taking set B's
-  speaker description; `round-view.ts` builds the blind view the page shows.
-- `choices/` is what the person picked and what it adds up to. `choices.ts` owns
-  the choice schema; `decisions.ts` turns each choice into the winning set with
-  the item's case, speakers, labels, and reason; `result.ts` counts the
-  decisions with `sign-test.ts`; `format-result.ts` describes the result.
-- `session/` is one round in progress: a round plus the choices so far.
-  `session.ts` adds a choice and checks saved choices; `files.ts` reads and
-  writes `round.json` and `choices.json`, and for a finished round `result.json`
-  and `decisions.json`; `serving.ts` marks the round with `serving.json` while a
-  process serves it, so a second one refuses; `grading.ts` serves
-  `grading-page.html` through the local server, saving each choice as it
-  arrives; `commands.ts` runs `judge` and `show`.
-- `cli/` is the command line only: `cli.ts` sends each command to its code, and
-  `options.ts` parses flags.
+- `human-eval.ts` is the entry: `gradeRound` and the round types.
+- `round.ts` defines what a caller passes, a question, whether the person
+  decides per item or per speaker, and items whose speakers each carry set A's
+  and set B's outputs and a description, and the verdicts it gets back.
+- `blind-round.ts` holds a round in progress: the random side of each item, the
+  blind view the page gets, and turning each choice into verdicts in output
+  sets. It checks the page's choices with Zod.
+- `grading.ts` serves `grading-page.html` through the local server, opens it,
+  keeps the round in memory, and resolves with the verdicts when every item is
+  decided.
 
-`typescript/examples/` holds the smallest project, one prompt and one speaker,
-run by the package's `tune-example` command. [Human evaluation](human-eval.md)
-owns the behavior.
+[Human evaluation](human-eval.md) owns the behavior.
 
 Each package ships its own local preset JSON. The root
 `scripts/check-presets.js` checks that the catalogs agree; installed packages

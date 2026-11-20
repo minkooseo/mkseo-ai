@@ -12,9 +12,9 @@ TypeScript supplies plain-string and validated-object generation for oMLX and LM
 Studio. It supports explicit structured or prompted output, bounded retries, and
 classified failures through an injected Node or Expo transport. Model presets
 avoid repeated endpoint and model configuration. A separate Node-only entry
-supports human evaluation: a person tunes a prompt by deciding blind A/B
-comparisons of model outputs on a local grading page; the library never scores
-an output or picks a side.
+supplies a blind grading page: a person decides A/B comparisons of model outputs
+that the calling program produced and chose; the library never scores an output
+or picks a side.
 
 Each package owns its dependencies and distribution. Editable TypeScript
 consumption must expose source and preset changes without a library build, copy,
@@ -34,5 +34,5 @@ persistence, runtime lifecycle, and user-facing behavior.
   failures.
 - [Evaluation records](evaluation.md): Python coverage, attempt ownership,
   evidence, and outcome invariants.
-- [Human evaluation](human-eval.md): TypeScript output sets, blind rounds, and
-  results decided by a person.
+- [Human evaluation](human-eval.md): the TypeScript blind grading page and the
+  verdicts a person gives on it.
